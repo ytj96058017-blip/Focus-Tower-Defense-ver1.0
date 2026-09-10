@@ -2,83 +2,339 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>포커스 타워 디펜스 - 중1 수학 실시간 협동 팀전</title>
-    <!-- Tailwind CSS CDN -->
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Do+Hyeon&family=Noto+Sans+KR:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Jua&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     
     <style>
-        body {
-            font-family: 'Noto Sans KR', sans-serif;
-            user-select: none;
-            -webkit-user-select: none;
-            touch-action: manipulation;
-            background-color: #080b18;
-            overflow-x: hidden;
-        }
+        body { font-family: 'Jua', 'Inter', sans-serif; }
         .font-impact { font-family: 'Black Han Sans', sans-serif; }
-        .font-sub { font-family: 'Do Hyeon', sans-serif; }
-        
-        /* CRT 모니터 및 사이버 텍스처 오버레이 */
-        .crt-overlay {
-            background: linear-gradient(rgba(18, 16, 38, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
-            background-size: 100% 3px, 4px 100%;
-            pointer-events: none;
+        .tower-bg {
+            background: radial-gradient(circle at 50% 20%, #1e1b4b 0%, #0f172a 70%, #020617 100%);
         }
-        
-        .hud-panel {
-            background: linear-gradient(145deg, rgba(15, 23, 42, 0.95), rgba(30, 27, 75, 0.95));
-            backdrop-filter: blur(12px);
-            box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.7), inset 0 1px 1px 0 rgba(255, 255, 255, 0.1);
+        .pulse-gold {
+            animation: pulseGold 2s infinite;
         }
-
-        /* 턴 활성화 맥동 테두리 */
-        @keyframes pulseBorder {
-            0%, 100% { border-color: rgba(234, 179, 8, 0.4); box-shadow: 0 0 15px rgba(234, 179, 8, 0.2); }
-            50% { border-color: rgba(234, 179, 8, 1); box-shadow: 0 0 35px rgba(234, 179, 8, 0.7); }
+        @keyframes pulseGold {
+            0%, 100% { box-shadow: 0 0 15px rgba(250, 204, 21, 0.4); }
+            50% { box-shadow: 0 0 35px rgba(250, 204, 21, 0.85); }
         }
-        .turn-active { animation: pulseBorder 1.5s infinite; }
-
-        /* 💨 먹구름 방해탄 안개 애니메이션 */
-        @keyframes smokeDrift {
-            0% { transform: scale(1) rotate(0deg); opacity: 0.94; }
-            50% { transform: scale(1.04) rotate(1.5deg); opacity: 0.99; }
-            100% { transform: scale(1) rotate(0deg); opacity: 0.94; }
+        .siren-alert {
+            animation: sirenFlash 0.7s infinite alternate;
         }
-        .smoke-cover { animation: smokeDrift 3s ease-in-out infinite; backdrop-filter: blur(12px); }
-
-        /* 🚨 요격 경보 점멸 애니메이션 */
-        @keyframes alertFlash {
-            0%, 100% { background-color: rgba(239, 68, 68, 0.88); box-shadow: 0 0 25px rgba(239, 68, 68, 0.8); }
-            50% { background-color: rgba(185, 28, 28, 0.96); box-shadow: 0 0 45px rgba(248, 113, 113, 1); }
+        @keyframes sirenFlash {
+            from { border-color: #ef4444; background-color: rgba(239, 68, 68, 0.25); }
+            to { border-color: #f59e0b; background-color: rgba(245, 158, 11, 0.35); }
         }
-        .intercept-alert { animation: alertFlash 0.7s infinite; }
-
-        /* ❄️ 빙결 효과 상태 */
+        .smoke-overlay {
+            background: repeating-radial-gradient(circle, rgba(71, 85, 105, 0.95), rgba(30, 41, 59, 0.98) 12px);
+            backdrop-filter: blur(14px);
+        }
         .frozen-effect {
-            pointer-events: none !important;
-            filter: drop-shadow(0 0 20px rgba(56, 189, 248, 0.9));
-            background: rgba(14, 165, 233, 0.3) !important;
-            border-color: #38bdf8 !important;
+            pointer-events: none;
+            filter: grayscale(0.5) drop-shadow(0 0 12px #38bdf8);
+            position: relative;
         }
-
-        /* 화면 흔들림(Screen Shake) 효과 */
-        .shake-screen {
-            animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
-        }
-        @keyframes shake {
-            10%, 90% { transform: translate3d(-2px, 0, 0); }
-            20%, 80% { transform: translate3d(3px, 0, 0); }
-            30%, 50%, 70% { transform: translate3d(-5px, 0, 0); }
-            40%, 60% { transform: translate3d(5px, 0, 0); }
+        .frozen-effect::after {
+            content: "❄️ 얼음 빙결 상태! (동결 중)";
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(56, 189, 248, 0.4);
+            border-radius: 1rem;
+            font-size: 1.3rem;
+            color: #ffffff;
+            font-weight: bold;
+            z-index: 40;
         }
     </style>
 </head>
+<body class="tower-bg text-white min-h-screen flex flex-col justify-between p-3 md:p-6 select-none">
 
-<body class="text-white min-h-screen flex flex-col justify-between">
+    <header class="text-center mb-2">
+        <div class="flex items-center justify-center gap-3">
+            <span class="text-3xl md:text-4xl">🏰</span>
+            <h1 class="text-3xl md:text-5xl font-impact tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-yellow-400 to-amber-500 drop-shadow-lg">
+                포커스 타워 디펜스
+            </h1>
+            <span class="text-3xl md:text-4xl">⚔️</span>
+        </div>
+        <p class="text-xs md:text-sm text-indigo-200 mt-1">중학교 1학년 일차방정식 4단계 협동 파이프라인 실시간 배틀</p>
+    </header>
+
+    <main class="max-w-5xl w-full mx-auto flex-1 flex flex-col justify-center">
+        <!-- 1. Lobby Screen -->
+        <div id="lobby-screen" class="bg-indigo-950/80 border-2 border-indigo-700/70 rounded-3xl p-6 md:p-10 shadow-2xl backdrop-blur-lg">
+            <div class="text-center mb-8">
+                <h2 class="text-2xl md:text-3xl font-bold text-yellow-300 mb-2">🛡️ 작전 본부: 배틀룸 입장</h2>
+                <p class="text-sm text-indigo-300">같은 배틀룸 코드를 입력한 친구들과 4인 협동 팀을 이뤄 대결하세요!</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                <div class="bg-indigo-900/60 p-5 rounded-2xl border border-indigo-700">
+                    <label class="block text-sm font-semibold mb-2 text-indigo-200">대원 닉네임</label>
+                    <input type="text" id="player-name" placeholder="예: 수학명사수 민우" maxlength="10"
+                           class="w-full px-4 py-3 rounded-xl bg-indigo-950 border-2 border-indigo-600 text-white font-bold text-lg focus:outline-none focus:border-yellow-400">
+                </div>
+                <div class="bg-indigo-900/60 p-5 rounded-2xl border border-indigo-700">
+                    <label class="block text-sm font-semibold mb-2 text-indigo-200">배틀룸 코드 (방 비밀번호)</label>
+                    <input type="text" id="room-code" placeholder="예: math101" maxlength="12"
+                           class="w-full px-4 py-3 rounded-xl bg-indigo-950 border-2 border-indigo-600 text-white font-bold text-lg focus:outline-none focus:border-yellow-400">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6">
+                <button onclick="joinTeam('alpha')" class="group relative py-5 rounded-2xl font-impact text-xl bg-gradient-to-r from-blue-700 to-indigo-600 hover:from-blue-600 hover:to-indigo-500 transition-all duration-200 shadow-xl border-2 border-blue-400 flex items-center justify-center gap-3 transform hover:-translate-y-1">
+                    <span class="text-2xl">🔵</span>
+                    <span>알파 요새(청군) 참전하기</span>
+                </button>
+                <button onclick="joinTeam('beta')" class="group relative py-5 rounded-2xl font-impact text-xl bg-gradient-to-r from-red-700 to-rose-600 hover:from-red-600 hover:to-rose-500 transition-all duration-200 shadow-xl border-2 border-red-400 flex items-center justify-center gap-3 transform hover:-translate-y-1">
+                    <span class="text-2xl">🔴</span>
+                    <span>베타 요새(백군) 참전하기</span>
+                </button>
+            </div>
+
+            <div id="lobby-status" class="text-center text-sm text-yellow-300 font-bold min-h-[24px]">
+                팀을 선택하면 실시간 전장으로 진입합니다!
+            </div>
+        </div>
+
+        <!-- 2. Battle Screen -->
+        <div id="battle-screen" class="hidden flex flex-col gap-4">
+            
+            <!-- Top HUD: Team HP and Status -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-900/90 p-4 rounded-2xl border border-slate-700 shadow-xl">
+                <!-- Alpha Team Card -->
+                <div class="flex flex-col gap-2 p-3.5 rounded-xl bg-blue-950/50 border-2 border-blue-500/40">
+                    <div class="flex justify-between items-center text-sm font-bold">
+                        <span class="text-blue-300 font-impact text-lg flex items-center gap-1.5">
+                            <span>🔵</span> 알파 요새 성벽
+                        </span>
+                        <span id="alpha-hp-text" class="text-blue-300 text-base">100 / 100</span>
+                    </div>
+                    <div class="w-full bg-slate-950 rounded-full h-4 overflow-hidden border border-blue-500/50">
+                        <div id="alpha-hp-bar" class="bg-gradient-to-r from-blue-600 to-cyan-400 h-full transition-all duration-300" style="width: 100%;"></div>
+                    </div>
+                    <div id="alpha-members" class="text-xs text-blue-200 truncate">대원: 대기 중...</div>
+                </div>
+
+                <!-- Beta Team Card -->
+                <div class="flex flex-col gap-2 p-3.5 rounded-xl bg-rose-950/50 border-2 border-rose-500/40">
+                    <div class="flex justify-between items-center text-sm font-bold">
+                        <span class="text-rose-300 font-impact text-lg flex items-center gap-1.5">
+                            <span>🔴</span> 베타 요새 성벽
+                        </span>
+                        <span id="beta-hp-text" class="text-rose-300 text-base">100 / 100</span>
+                    </div>
+                    <div class="w-full bg-slate-950 rounded-full h-4 overflow-hidden border border-rose-500/50">
+                        <div id="beta-hp-bar" class="bg-gradient-to-r from-rose-600 to-amber-500 h-full transition-all duration-300" style="width: 100%;"></div>
+                    </div>
+                    <div id="beta-members" class="text-xs text-rose-200 truncate">대원: 대기 중...</div>
+                </div>
+            </div>
+
+            <!-- 2D Canvas Defense Arena -->
+            <div class="relative w-full h-56 md:h-64 bg-slate-950 rounded-2xl border-2 border-slate-700 overflow-hidden shadow-2xl">
+                <canvas id="defense-canvas" class="w-full h-full block"></canvas>
+                
+                <!-- Floating Supply Balloon Notification Button -->
+                <button id="supply-balloon-btn" onclick="openBalloonQuiz()" class="hidden absolute top-3 left-1/2 -translate-x-1/2 z-20 px-4 py-2 bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 font-impact rounded-full shadow-lg border-2 border-white animate-bounce flex items-center gap-2">
+                    <span class="text-xl">🎈</span>
+                    <span id="balloon-label">공중 보급 풍선 난입! (선착순 빙결)</span>
+                </button>
+
+                <!-- In-flight Interception Warning Banner -->
+                <div id="interception-banner" class="hidden absolute top-2 left-4 right-4 p-2.5 rounded-xl siren-alert border-2 text-center z-20 flex items-center justify-between shadow-xl">
+                    <div class="flex items-center gap-2">
+                        <span class="text-xl">🚨</span>
+                        <span class="font-impact text-sm md:text-base text-yellow-300">적 포탄 접근 중! 긴급 요격 방어막 가동!</span>
+                    </div>
+                    <button onclick="openInterceptionModal()" class="px-3 py-1 bg-yellow-400 hover:bg-yellow-300 text-slate-950 font-bold text-xs md:text-sm rounded-lg shadow animate-pulse">
+                        🛡️ 1초 암산 요격 퀴즈
+                    </button>
+                </div>
+            </div>
+
+            <!-- Collaborative 4-Step Pipeline Workspace -->
+            <div id="action-box" class="relative bg-indigo-950/90 border-2 border-indigo-700/80 rounded-3xl p-5 md:p-6 shadow-2xl flex flex-col items-center text-center pulse-gold">
+                
+                <!-- Smokescreen Cover Overlay (Wipe to reveal) -->
+                <div id="smoke-overlay" class="smoke-overlay hidden absolute inset-0 rounded-3xl z-30 flex flex-col items-center justify-center p-6 text-center">
+                    <span class="text-5xl animate-bounce mb-3">💨</span>
+                    <h4 class="text-2xl font-impact text-rose-400 mb-1">상대의 먹구름 방해탄 피격!</h4>
+                    <p class="text-sm text-slate-300 mb-4">화면이 연막으로 뒤덮였습니다! 아래 버튼을 연속으로 문질러 연막을 걷어내세요!</p>
+                    <button onclick="wipeSmoke()" class="px-6 py-3 bg-gradient-to-r from-slate-200 to-white text-slate-900 font-impact text-lg rounded-xl shadow-lg border-2 border-slate-400 active:scale-95">
+                        🧹 연막 문질러 닦기 (<span id="smoke-wipe-count">5</span>회 남음)
+                    </button>
+                </div>
+
+                <!-- Player Identity & Synchro Status -->
+                <div class="flex flex-wrap items-center justify-center gap-2 mb-3">
+                    <span id="my-team-badge" class="text-xs px-3.5 py-1.5 rounded-full font-bold">소속팀</span>
+                    <span id="my-role-badge" class="text-xs px-3.5 py-1.5 bg-yellow-500/20 text-yellow-300 border border-yellow-500/40 rounded-full font-bold">내 역할</span>
+                    <span id="synchro-badge" class="text-xs px-3.5 py-1.5 bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 rounded-full font-bold">
+                        ⚡ 싱크로 보너스: <span id="synchro-timer">32</span>초
+                    </span>
+                </div>
+
+                <!-- Equation Display -->
+                <div class="w-full max-w-xl bg-slate-900 border-2 border-yellow-500/60 rounded-2xl p-4 md:p-5 shadow-inner mb-4">
+                    <div class="text-xs font-semibold text-indigo-300 mb-1 tracking-wider uppercase">현재 작전 일차방정식</div>
+                    <div id="equation-display" class="text-2xl md:text-3xl font-impact text-yellow-300 tracking-wider">
+                        방정식 생성 중...
+                    </div>
+                </div>
+
+                <!-- Dynamic Step Instruction and Input -->
+                <div class="w-full max-w-xl flex flex-col items-center gap-3">
+                    <div id="step-instruction" class="text-sm md:text-base font-bold text-yellow-200 min-h-[44px] flex items-center justify-center px-2">
+                        단계 안내 로딩 중...
+                    </div>
+
+                    <div id="input-controls" class="flex flex-col sm:flex-row items-center justify-center gap-2 w-full max-w-md">
+                        <input type="number" id="step-input" placeholder="정답 숫자 입력" 
+                               class="w-full sm:w-48 px-4 py-3 rounded-xl bg-slate-900 border-2 border-yellow-400 text-white font-bold text-xl text-center focus:outline-none focus:ring-2 focus:ring-yellow-300"
+                               onkeydown="if(event.key==='Enter') submitPipelineStep()">
+                        <button id="submit-step-btn" onclick="submitPipelineStep()" 
+                                class="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-yellow-500 to-amber-400 hover:from-yellow-400 hover:to-amber-300 text-slate-950 font-impact text-lg rounded-xl transition shadow-lg flex items-center justify-center gap-1.5">
+                            <span>🎯</span><span>단계 정답 장전</span>
+                        </button>
+                    </div>
+
+                    <!-- Role Interlock Waiting Notice -->
+                    <div id="waiting-notice" class="hidden p-3 rounded-xl bg-indigo-900/60 border border-indigo-600 text-xs md:text-sm text-indigo-200">
+                        ⏳ 현재 <span id="current-actor-name" class="font-bold text-yellow-300"></span> 대원이 계산 중입니다. 함께 지켜보며 응원해 주세요!
+                    </div>
+                </div>
+
+                <!-- 4-Stage Progress Tracker -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 w-full max-w-xl mt-5 pt-4 border-t border-indigo-800 text-xs font-semibold">
+                    <div id="stage-card-0" class="p-2.5 rounded-xl border transition-all text-slate-400 bg-slate-900/60 border-slate-700">
+                        ① 괄호 풀기 (전개)
+                    </div>
+                    <div id="stage-card-1" class="p-2.5 rounded-xl border transition-all text-slate-400 bg-slate-900/60 border-slate-700">
+                        ② 미지수 좌변 이항
+                    </div>
+                    <div id="stage-card-2" class="p-2.5 rounded-xl border transition-all text-slate-400 bg-slate-900/60 border-slate-700">
+                        ③ 상수항 우변 정리
+                    </div>
+                    <div id="stage-card-3" class="p-2.5 rounded-xl border transition-all text-slate-400 bg-slate-900/60 border-slate-700">
+                        ④ 최종 해 도출 & 발사
+                    </div>
+                </div>
+
+                <!-- Feedback Message -->
+                <div id="battle-feedback" class="text-sm font-bold min-h-[24px] mt-3"></div>
+
+                <!-- Quick Team Tactics Cheer Buttons -->
+                <div class="flex flex-wrap items-center justify-center gap-2 mt-2">
+                    <button onclick="sendQuickCheer('집중! 다 풀 수 있어! 👊')" class="px-3 py-1 bg-indigo-900/70 hover:bg-indigo-800 border border-indigo-600 rounded-lg text-xs text-indigo-200">
+                        👊 집중!
+                    </button>
+                    <button onclick="sendQuickCheer('부호 바꿨는지 확인해! ⚠️')" class="px-3 py-1 bg-indigo-900/70 hover:bg-indigo-800 border border-indigo-600 rounded-lg text-xs text-indigo-200">
+                        ⚠️ 부호 확인!
+                    </button>
+                    <button onclick="sendQuickCheer('나이스 샷! 포탄 장전 완료! 🔥')" class="px-3 py-1 bg-indigo-900/70 hover:bg-indigo-800 border border-indigo-600 rounded-lg text-xs text-indigo-200">
+                        🔥 나이스 샷!
+                    </button>
+                </div>
+
+            </div>
+
+        </div>
+    </main>
+
+    <!-- MODAL 1: Special Ammo Tactical Selection -->
+    <div id="ammo-select-modal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-md hidden flex items-center justify-center z-50 p-4">
+        <div class="bg-indigo-950 border-2 border-yellow-400 rounded-3xl p-6 max-w-lg w-full text-center shadow-2xl">
+            <h3 class="text-2xl font-impact text-yellow-300 mb-1">🚀 4단계 완료! 전술 포탄 선택</h3>
+            <p class="text-xs text-indigo-200 mb-5">발사할 전술 포탄을 선택하여 전황을 주도하세요!</p>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
+                <!-- Fire Ammo -->
+                <button onclick="chooseSpecialAmmo('mega_fire')" class="p-4 rounded-2xl bg-gradient-to-b from-rose-900/80 to-red-950 border-2 border-rose-500 hover:border-yellow-300 flex flex-col items-center gap-2 transition hover:scale-105">
+                    <span class="text-3xl">🔥</span>
+                    <span class="font-impact text-base text-rose-300">메가 화염탄</span>
+                    <span class="text-xs text-slate-300">적 요새에 막대한 피해<br><b class="text-yellow-400">-35 HP</b></span>
+                </button>
+                <!-- Smoke Ammo -->
+                <button onclick="chooseSpecialAmmo('smoke')" class="p-4 rounded-2xl bg-gradient-to-b from-slate-800/80 to-slate-950 border-2 border-slate-500 hover:border-yellow-300 flex flex-col items-center gap-2 transition hover:scale-105">
+                    <span class="text-3xl">💨</span>
+                    <span class="font-impact text-base text-slate-300">먹구름 방해탄</span>
+                    <span class="text-xs text-slate-300">적 화면 시야 차단<br><b class="text-rose-400">-15 HP + 연막</b></span>
+                </button>
+                <!-- Repair Drone -->
+                <button onclick="chooseSpecialAmmo('repair')" class="p-4 rounded-2xl bg-gradient-to-b from-emerald-900/80 to-teal-950 border-2 border-emerald-500 hover:border-yellow-300 flex flex-col items-center gap-2 transition hover:scale-105">
+                    <span class="text-3xl">🛠️</span>
+                    <span class="font-impact text-base text-emerald-300">수리 드론</span>
+                    <span class="text-xs text-slate-300">아군 성벽 직접 수리<br><b class="text-emerald-400">+25 HP 복구</b></span>
+                </button>
+            </div>
+            <div id="synchro-bonus-text" class="text-xs font-bold text-yellow-300">⚡ 퍼펙트 싱크로 활성 시 위력 +10 추가!</div>
+        </div>
+    </div>
+
+    <!-- MODAL 2: Interception Shield Speed Quiz -->
+    <div id="intercept-modal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-md hidden flex items-center justify-center z-50 p-4">
+        <div class="bg-slate-900 border-2 border-cyan-400 rounded-3xl p-6 max-w-sm w-full text-center shadow-2xl">
+            <span class="text-4xl animate-pulse">🛡️</span>
+            <h4 class="text-xl font-impact text-cyan-300 mt-2 mb-1">방어막 긴급 요격 퀴즈</h4>
+            <p class="text-xs text-slate-300 mb-4">포탄이 성벽에 닿기 전에 암산 퀴즈를 맞혀 포탄을 무력화하세요!</p>
+
+            <div id="intercept-quiz-expr" class="text-3xl font-impact text-yellow-300 bg-slate-950 py-3 px-4 rounded-xl border border-cyan-500/50 mb-4">
+                (-3) × 4 = ?
+            </div>
+
+            <div class="flex items-center gap-2">
+                <input type="number" id="intercept-quiz-input" placeholder="답 입력" 
+                       class="w-full px-4 py-3 rounded-xl bg-slate-950 border-2 border-cyan-400 text-white font-bold text-center text-xl focus:outline-none"
+                       onkeydown="if(event.key==='Enter') submitInterceptionQuiz()">
+                <button onclick="submitInterceptionQuiz()" class="px-5 py-3 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-impact rounded-xl">
+                    요격
+                </button>
+            </div>
+            <button onclick="closeInterceptionModal()" class="text-xs text-slate-400 mt-4 underline">닫기</button>
+        </div>
+    </div>
+
+    <!-- MODAL 3: Air Supply Balloon Quiz -->
+    <div id="balloon-quiz-modal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-md hidden flex items-center justify-center z-50 p-4">
+        <div class="bg-indigo-950 border-2 border-yellow-400 rounded-3xl p-6 max-w-sm w-full text-center shadow-2xl">
+            <span class="text-4xl animate-bounce">🎈</span>
+            <h4 class="text-xl font-impact text-yellow-300 mt-2 mb-1">공중 보급 선착순 퀴즈</h4>
+            <p class="text-xs text-indigo-200 mb-4">정답을 먼저 맞히면 상대 팀 전원의 입력을 4초간 얼립니다!</p>
+
+            <div id="balloon-quiz-expr" class="text-3xl font-impact text-amber-300 bg-indigo-900 py-3 px-4 rounded-xl border border-yellow-500 mb-4">
+                12 - (-5) = ?
+            </div>
+
+            <div class="flex items-center gap-2">
+                <input type="number" id="balloon-quiz-input" placeholder="답 입력" 
+                       class="w-full px-4 py-3 rounded-xl bg-indigo-900 border-2 border-yellow-400 text-white font-bold text-center text-xl focus:outline-none"
+                       onkeydown="if(event.key==='Enter') submitBalloonQuiz()">
+                <button onclick="submitBalloonQuiz()" class="px-5 py-3 bg-yellow-400 hover:bg-yellow-300 text-slate-950 font-impact rounded-xl">
+                    탈취
+                </button>
+            </div>
+            <button onclick="closeBalloonModal()" class="text-xs text-indigo-300 mt-4 underline">닫기</button>
+        </div>
+    </div>
+
+    <!-- Generic Notice Modal -->
+    <div id="general-modal" class="fixed inset-0 bg-slate-950/80 hidden flex items-center justify-center z-50 p-4">
+        <div class="bg-indigo-900 border border-indigo-600 rounded-2xl p-6 max-w-sm w-full text-center shadow-2xl">
+            <h4 id="gen-modal-title" class="text-xl font-impact text-yellow-300 mb-2">알림</h4>
+            <p id="gen-modal-body" class="text-sm text-indigo-100 mb-5">내용</p>
+            <button onclick="closeGeneralModal()" class="bg-yellow-400 hover:bg-yellow-300 text-indigo-950 font-bold px-6 py-2 rounded-xl transition">
+                확인
+            </button>
+        </div>
+    </div>
+
     <script>
         class SoundFX {
             constructor() {
@@ -87,460 +343,177 @@
             init() {
                 if (!this.ctx) {
                     const AudioContext = window.AudioContext || window.webkitAudioContext;
-                    this.ctx = new AudioContext();
+                    if (AudioContext) this.ctx = new AudioContext();
                 }
-                if (this.ctx.state === 'suspended') {
+                if (this.ctx && this.ctx.state === 'suspended') {
                     this.ctx.resume();
                 }
             }
-            playTone(freq, type = 'sine', duration = 0.15, vol = 0.2) {
+            playTone(freq, type, duration, gainVal = 0.15) {
+                if (!this.ctx) return;
                 try {
-                    this.init();
                     const osc = this.ctx.createOscillator();
                     const gain = this.ctx.createGain();
                     osc.type = type;
                     osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
-                    gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+                    gain.gain.setValueAtTime(gainVal, this.ctx.currentTime);
                     gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + duration);
                     osc.connect(gain);
                     gain.connect(this.ctx.destination);
                     osc.start();
                     osc.stop(this.ctx.currentTime + duration);
-                } catch(e) {}
+                } catch (e) {}
             }
             shoot() {
                 this.init();
-                this.playTone(180, 'sawtooth', 0.2, 0.3);
-                setTimeout(() => this.playTone(90, 'triangle', 0.3, 0.4), 60);
+                this.playTone(320, 'square', 0.25, 0.2);
+                setTimeout(() => this.playTone(180, 'sawtooth', 0.35, 0.25), 60);
             }
-            explode() {
+            explosion() {
                 this.init();
-                this.playTone(80, 'square', 0.45, 0.45);
-                setTimeout(() => this.playTone(45, 'sawtooth', 0.5, 0.5), 90);
+                this.playTone(110, 'sawtooth', 0.4, 0.3);
+                setTimeout(() => this.playTone(65, 'triangle', 0.5, 0.35), 70);
             }
             success() {
                 this.init();
-                this.playTone(523.25, 'triangle', 0.1, 0.2); // C5
-                setTimeout(() => this.playTone(659.25, 'triangle', 0.1, 0.2), 70); // E5
-                setTimeout(() => this.playTone(783.99, 'triangle', 0.2, 0.25), 140); // G5
+                this.playTone(523.25, 'sine', 0.15, 0.2);
+                setTimeout(() => this.playTone(659.25, 'sine', 0.25, 0.25), 100);
             }
             error() {
                 this.init();
-                this.playTone(160, 'sawtooth', 0.2, 0.25);
-                setTimeout(() => this.playTone(120, 'sawtooth', 0.25, 0.3), 100);
-            }
-            chat() {
-                this.init();
-                this.playTone(880, 'sine', 0.08, 0.15);
-            }
-            shield() {
-                this.init();
-                this.playTone(350, 'sine', 0.1, 0.25);
-                setTimeout(() => this.playTone(700, 'sine', 0.2, 0.3), 70);
-                setTimeout(() => this.playTone(1100, 'triangle', 0.3, 0.35), 140);
+                this.playTone(210, 'sawtooth', 0.2, 0.25);
+                setTimeout(() => this.playTone(160, 'sawtooth', 0.25, 0.25), 100);
             }
             siren() {
                 this.init();
-                this.playTone(750, 'sawtooth', 0.18, 0.22);
-                setTimeout(() => this.playTone(520, 'sawtooth', 0.18, 0.22), 200);
+                this.playTone(740, 'sawtooth', 0.18, 0.2);
+                setTimeout(() => this.playTone(520, 'sawtooth', 0.18, 0.2), 180);
             }
             freeze() {
                 this.init();
-                this.playTone(1100, 'triangle', 0.1, 0.25);
-                setTimeout(() => this.playTone(1450, 'sine', 0.2, 0.3), 70);
+                this.playTone(1200, 'triangle', 0.1, 0.2);
+                setTimeout(() => this.playTone(1500, 'sine', 0.25, 0.3), 80);
+            }
+            repair() {
+                this.init();
+                this.playTone(440, 'sine', 0.1, 0.15);
+                setTimeout(() => this.playTone(554.37, 'sine', 0.12, 0.2), 60);
+                setTimeout(() => this.playTone(659.25, 'sine', 0.15, 0.2), 120);
+                setTimeout(() => this.playTone(880, 'triangle', 0.3, 0.25), 180);
             }
             synchro() {
                 this.init();
                 [523.25, 659.25, 783.99, 1046.5].forEach((f, idx) => {
-                    setTimeout(() => this.playTone(f, 'triangle', 0.2, 0.3), idx * 80);
+                    setTimeout(() => this.playTone(f, 'triangle', 0.18, 0.25), idx * 75);
                 });
             }
         }
         const sfx = new SoundFX();
     </script>
 
-    <header class="w-full max-w-6xl mx-auto px-4 pt-3 pb-2 flex items-center justify-between border-b border-indigo-950">
-        <div class="flex items-center gap-3">
-            <span class="text-3xl filter drop-shadow">🏰</span>
-            <div>
-                <h1 class="text-xl sm:text-2xl md:text-3xl font-impact tracking-wider text-yellow-400">포커스 타워 디펜스</h1>
-                <p class="text-[11px] sm:text-xs text-indigo-300 font-semibold">중학교 1학년 일차방정식 실시간 협동 공방전</p>
-            </div>
-        </div>
-        <div class="flex items-center gap-2">
-            <div id="connection-status-dot" class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></div>
-            <span id="room-code-tag" class="text-xs px-3 py-1 rounded-full bg-indigo-950 border border-indigo-700 text-indigo-200 font-mono font-bold">로비 대기중</span>
-        </div>
-    </header>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, getDoc, setDoc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    <main id="main-content" class="flex-1 w-full max-w-6xl mx-auto px-4 py-3 flex flex-col justify-center">
+        const firebaseConfig = {
+            apiKey: "AIzaSyChxrOzoTxFMy_BvkvNZLXAp1oRvN7Fb1g",
+            authDomain: "focus-tower-defense.firebaseapp.com",
+            projectId: "focus-tower-defense",
+            storageBucket: "focus-tower-defense.firebasestorage.app",
+            messagingSenderId: "519329169002",
+            appId: "1:519329169002:web:401534fe04b6ad39131413",
+            measurementId: "G-G2JRKQ2KXY"
+        };
 
-        <!-- LOBBY SCREEN -->
-        <div id="lobby-screen" class="hud-panel rounded-3xl p-6 sm:p-8 max-w-2xl w-full mx-auto border border-indigo-700 shadow-2xl transition-all">
-            <div class="text-center mb-6">
-                <div class="inline-block px-3 py-1 rounded-full bg-yellow-500/10 border border-yellow-500/30 text-yellow-300 text-xs font-bold mb-2">실시간 수업 대결 모드</div>
-                <h2 class="text-2xl sm:text-3xl font-impact text-yellow-300">작전 사령부 로그인</h2>
-                <p class="text-xs sm:text-sm text-indigo-200 mt-1">같은 반 친구들과 같은 방 코드를 입력하고 소속 팀을 선택하세요!</p>
-            </div>
+        let db = null;
+        let auth = null;
+        let useFallback = false;
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-                <div>
-                    <label class="block text-xs font-bold text-indigo-300 mb-1.5">대원 닉네임</label>
-                    <input type="text" id="player-name" maxlength="10" placeholder="예: 1번 김수학" class="w-full px-4 py-3 rounded-2xl bg-indigo-950/90 border border-indigo-600 focus:border-yellow-400 text-white font-bold text-sm focus:outline-none transition">
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-indigo-300 mb-1.5">배틀룸 코드 (비밀번호)</label>
-                    <input type="text" id="room-code" maxlength="12" placeholder="예: 101 또는 A" class="w-full px-4 py-3 rounded-2xl bg-indigo-950/90 border border-indigo-600 focus:border-yellow-400 text-yellow-300 font-mono font-bold text-sm focus:outline-none transition">
-                </div>
-            </div>
+        try {
+            const app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+            signInAnonymously(auth).catch(() => { useFallback = true; });
+        } catch (e) {
+            useFallback = true;
+        }
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-                <button onclick="joinTeam('alpha')" class="group p-4 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-900 border-2 border-blue-400 hover:border-blue-200 shadow-lg hover:shadow-blue-500/30 active:scale-95 transition flex items-center justify-between">
-                    <div class="text-left">
-                        <div class="text-xs text-blue-200 font-bold">청군 사령부</div>
-                        <div class="text-lg font-impact text-white group-hover:translate-x-1 transition">🔵 알파 팀 입장</div>
-                    </div>
-                    <span class="text-3xl">🛡️</span>
-                </button>
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'focus-tower-defense-default';
+        let currentUserName = '';
+        let currentRoomCode = '';
+        let myTeam = '';
+        let unsubscribeRoom = null;
+        let lastKnownRoomData = null;
+        let bc = null;
 
-                <button onclick="joinTeam('beta')" class="group p-4 rounded-2xl bg-gradient-to-br from-rose-600 to-red-950 border-2 border-rose-400 hover:border-rose-200 shadow-lg hover:shadow-rose-500/30 active:scale-95 transition flex items-center justify-between">
-                    <div class="text-left">
-                        <div class="text-xs text-rose-200 font-bold">홍군 사령부</div>
-                        <div class="text-lg font-impact text-white group-hover:translate-x-1 transition">🔴 베타 팀 입장</div>
-                    </div>
-                    <span class="text-3xl">⚔️</span>
-                </button>
-            </div>
+        // Problem & Pipeline State
+        let currentProblemStartTime = Date.now();
+        let mistakesOnCurrentProblem = 0;
+        let synchroTimerInterval = null;
+        let isPerfectSynchroActive = false;
 
-            <!-- Role guide -->
-            <div class="rounded-2xl bg-black/40 p-3.5 border border-indigo-900 text-[11px] text-indigo-300 space-y-1">
-                <div class="font-bold text-yellow-400 flex items-center gap-1.5">
-                    <span>💡</span> <span>4단계 협동 파이프라인 자동 분배 시스템</span>
-                </div>
-                <p>• 팀 접속 인원(2~4인)에 따라 <b>1단계: 괄호 풀기 ➔ 2단계: x항 이항 ➔ 3단계: 상수항 정리 ➔ 4단계: 최종 해 발사</b>가 각 대원에게 자동 배정됩니다.</p>
-                <p>• 내 차례가 아닐 때는 입력이 잠기며, 팀원의 문제 풀이에 조언하고 함께 연산해야 합니다!</p>
-            </div>
-        </div>
+        // Tactical & Intercept State
+        let currentInterceptProblem = null;
+        let smokeWipesRemaining = 5;
+        let balloonCheckInterval = null;
+        let activeBalloonData = null;
 
-        <!-- BATTLE SCREEN -->
-        <div id="battle-screen" class="hidden flex flex-col gap-3">
-
-            <!-- Team Health HUD -->
-            <div class="grid grid-cols-2 gap-3">
-                <!-- Alpha Fortress HUD -->
-                <div class="hud-panel p-3 rounded-2xl border-l-4 border-blue-400">
-                    <div class="flex justify-between items-center mb-1">
-                        <span class="font-impact text-xs sm:text-sm text-blue-400 flex items-center gap-1">
-                            <span>🔵</span> <span id="alpha-title">알파 요새</span>
-                        </span>
-                        <span id="alpha-hp-text" class="font-impact text-xs sm:text-sm text-blue-200">100 / 100</span>
-                    </div>
-                    <div class="w-full bg-slate-900 rounded-full h-3.5 p-0.5 border border-blue-500/40 overflow-hidden">
-                        <div id="alpha-hp-bar" class="h-full rounded-full bg-gradient-to-r from-blue-500 to-cyan-300 transition-all duration-300" style="width: 100%;"></div>
-                    </div>
-                    <div id="alpha-members-list" class="text-[10px] text-indigo-300 mt-1.5 truncate">대원: 연결 대기중</div>
-                </div>
-
-                <!-- Beta Fortress HUD -->
-                <div class="hud-panel p-3 rounded-2xl border-r-4 border-rose-400">
-                    <div class="flex justify-between items-center mb-1">
-                        <span id="beta-hp-text" class="font-impact text-xs sm:text-sm text-rose-200">100 / 100</span>
-                        <span class="font-impact text-xs sm:text-sm text-rose-400 flex items-center gap-1">
-                            <span id="beta-title">베타 요새</span> <span>🔴</span>
-                        </span>
-                    </div>
-                    <div class="w-full bg-slate-900 rounded-full h-3.5 p-0.5 border border-rose-500/40 overflow-hidden">
-                        <div id="beta-hp-bar" class="h-full rounded-full bg-gradient-to-l from-rose-500 to-amber-300 transition-all duration-300 ml-auto" style="width: 100%;"></div>
-                    </div>
-                    <div id="beta-members-list" class="text-[10px] text-indigo-300 mt-1.5 text-right truncate">대원: 연결 대기중</div>
-                </div>
-            </div>
-
-            <div id="canvas-container" class="relative w-full rounded-2xl overflow-hidden border-2 border-indigo-800 shadow-2xl bg-[#090d1f]">
-                <canvas id="defense-canvas" class="w-full h-48 sm:h-56 md:h-64 block"></canvas>
-                <div class="crt-overlay absolute inset-0"></div>
-
-                <!-- 🎈 5. 공중 보급 풍선 버튼 -->
-                <button id="supply-balloon-btn" onclick="openBalloonQuiz()" class="hidden absolute z-20 top-4 left-1/2 -translate-x-1/2 px-3.5 py-1.5 rounded-2xl bg-amber-500 hover:bg-amber-400 text-indigo-950 font-impact text-xs sm:text-sm border-2 border-yellow-200 shadow-2xl animate-bounce flex items-center gap-2 cursor-pointer transition">
-                    <span class="text-xl">🎈</span>
-                    <span>공중 보급 풍선 난입! (터치하여 상대 4초 얼리기)</span>
-                </button>
-
-                <!-- 🚨 3. 실시간 적 포탄 접근 및 긴급 요격 방어막 팝업 -->
-                <div id="interception-banner" class="hidden absolute top-2 left-1/2 -translate-x-1/2 z-30 w-11/12 max-w-md p-2.5 rounded-2xl intercept-alert text-white shadow-2xl flex flex-col items-center gap-1.5 border-2 border-yellow-300">
-                    <div class="flex items-center gap-2 text-xs sm:text-sm font-impact">
-                        <span class="text-lg animate-spin">🚨</span>
-                        <span>적 포탄 접근 중! (착탄 전 암산 요격 시 대미지 0 방어!)</span>
-                    </div>
-                    <div class="w-full flex items-center justify-center gap-2">
-                        <span id="intercept-expr" class="font-impact text-sm sm:text-base text-yellow-300 bg-black/60 px-3 py-1 rounded-lg">(-4) × 3 = ?</span>
-                        <input type="number" id="intercept-input" placeholder="정답" class="w-20 px-2 py-1 text-center font-impact rounded-lg bg-slate-900 border border-yellow-400 text-yellow-300 text-sm focus:outline-none" onkeydown="if(event.key==='Enter') handleInterceptSubmission()">
-                        <button onclick="handleInterceptSubmission()" class="px-3 py-1 bg-yellow-400 text-indigo-950 font-impact text-xs rounded-lg hover:bg-yellow-300 active:scale-95">요격 발사</button>
-                    </div>
-                </div>
-
-                <!-- Arena Status Tag -->
-                <div class="absolute top-2 left-2 px-3 py-0.5 rounded-full bg-slate-900/80 border border-indigo-700/50 text-[10px] text-indigo-300 font-bold backdrop-blur">
-                    실시간 대포 전장 교전
-                </div>
-
-                <!-- 💨 1. 먹구름 방해탄 안개 오버레이 (문질러 지우기) -->
-                <div id="smoke-overlay" class="hidden absolute inset-0 z-40 bg-slate-950/95 smoke-cover flex flex-col items-center justify-center p-4 text-center">
-                    <div class="text-4xl mb-1 animate-bounce">💨</div>
-                    <h4 class="text-lg sm:text-xl font-impact text-slate-200 mb-1">상대의 먹구름 방해탄 피격!</h4>
-                    <p class="text-xs text-indigo-300 mb-3">화면의 버튼을 5회 광클/터치하여 안개를 빠르게 걷어내세요!</p>
-                    <button onclick="wipeSmoke()" class="px-6 py-2 rounded-xl font-impact text-xs sm:text-sm bg-yellow-500 hover:bg-yellow-400 text-indigo-950 shadow-lg border border-yellow-300 active:scale-90 transition">
-                        안개 걷어내기 (<span id="smoke-wipe-count">5</span>회 남음)
-                    </button>
-                </div>
-
-                <!-- Quick Team Chat Chips -->
-                <div class="absolute bottom-2 left-2 flex gap-1 z-10">
-                    <button onclick="sendQuickCheer('부호 조심!')" class="px-2 py-0.5 rounded bg-indigo-950/80 hover:bg-indigo-800 text-[10px] text-indigo-200 border border-indigo-700">💬 부호 조심!</button>
-                    <button onclick="sendQuickCheer('이항 확인!')" class="px-2 py-0.5 rounded bg-indigo-950/80 hover:bg-indigo-800 text-[10px] text-indigo-200 border border-indigo-700">💬 이항 확인!</button>
-                    <button onclick="sendQuickCheer('나이스 샷!')" class="px-2 py-0.5 rounded bg-indigo-950/80 hover:bg-indigo-800 text-[10px] text-indigo-200 border border-indigo-700">💬 나이스 샷!</button>
-                </div>
-            </div>
-
-            <!-- Collaborative Math Pipeline HUD -->
-            <div id="action-box" class="hud-panel p-4 sm:p-5 rounded-3xl border border-indigo-700 flex flex-col items-center text-center relative transition-all">
-                
-                <!-- Role and Sync Badges -->
-                <div class="flex flex-wrap items-center justify-center gap-2 mb-3">
-                    <span id="my-team-pill" class="text-xs px-3 py-1 rounded-full font-bold bg-blue-900/60 text-blue-300 border border-blue-500/50">🔵 알파 팀</span>
-                    <span id="my-role-pill" class="text-xs px-3 py-1 rounded-full font-bold bg-yellow-500/20 text-yellow-300 border border-yellow-500/40">역할 배정 중...</span>
-                    <span id="synchro-status-pill" class="text-[10px] px-2.5 py-0.5 rounded-full font-bold bg-purple-900/40 text-purple-300 border border-purple-500/40">⚡ 퍼펙트 싱크로 준비 중</span>
-                </div>
-
-                <!-- Current Equation Display (중1 일차방정식 수식) -->
-                <div class="w-full max-w-xl bg-black/40 border border-indigo-800 rounded-2xl p-3 sm:p-4 mb-3 shadow-inner">
-                    <div class="text-[11px] text-indigo-300 font-bold mb-1">🎯 우리 팀의 격파 목표 일차방정식</div>
-                    <div id="equation-text" class="text-2xl sm:text-3xl md:text-4xl font-impact tracking-wider text-yellow-300 drop-shadow">
-                        3(x - 2) = x + 4
-                    </div>
-                </div>
-
-                <!-- Step Progress Trackers -->
-                <div class="w-full max-w-xl grid grid-cols-4 gap-1.5 mb-3 text-[10px] sm:text-xs font-bold">
-                    <div id="step-pill-0" class="p-2 rounded-xl bg-slate-900/80 border border-indigo-800 text-slate-400">1. 괄호 풀기</div>
-                    <div id="step-pill-1" class="p-2 rounded-xl bg-slate-900/80 border border-indigo-800 text-slate-400">2. x항 이항</div>
-                    <div id="step-pill-2" class="p-2 rounded-xl bg-slate-900/80 border border-indigo-800 text-slate-400">3. 상수항 정리</div>
-                    <div id="step-pill-3" class="p-2 rounded-xl bg-slate-900/80 border border-indigo-800 text-slate-400">4. 최종 해(x)</div>
-                </div>
-
-                <!-- Step Instruction (No Direct Answers) -->
-                <div id="step-instruction" class="text-xs sm:text-sm font-bold text-yellow-200 mb-3 min-h-[2.5rem] flex items-center justify-center px-2">
-                    문제를 분석하는 중입니다...
-                </div>
-
-                <!-- Turn Input / Waiting Box -->
-                <div id="turn-input-container" class="w-full max-w-md flex flex-col items-center gap-2">
-                    <div class="w-full flex items-center justify-center gap-2">
-                        <input type="number" id="step-answer-input" placeholder="정답 숫자 입력" class="w-40 sm:w-48 px-4 py-2.5 text-center font-impact text-lg sm:text-xl rounded-xl bg-slate-950 border-2 border-yellow-400 text-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-400 transition" onkeydown="if(event.key==='Enter') submitCurrentStep()">
-                        <button onclick="submitCurrentStep()" id="submit-step-btn" class="px-5 py-2.5 rounded-xl font-impact text-xs sm:text-sm bg-yellow-400 hover:bg-yellow-300 text-indigo-950 shadow-md active:scale-95 transition">
-                            단계 정답 장전
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Teammate Waiting Notice -->
-                <div id="waiting-teammate-box" class="hidden p-3 rounded-xl bg-indigo-950/80 border border-indigo-700 text-indigo-200 text-xs flex items-center justify-center gap-2">
-                    <span class="animate-spin text-base">⏳</span>
-                    <span id="waiting-teammate-text">팀원이 계산 중입니다. 함께 식을 보고 조언해 주세요!</span>
-                </div>
-
-                <div id="feedback-msg" class="mt-2 text-xs sm:text-sm font-bold text-emerald-400 h-5"></div>
-            </div>
-
-        </div>
-
-    </main>
-
-    <!-- 🎯 1. 4단계 완료 시 특수 포탄 선택 모달 (화염탄 / 먹구름탄 / 수리드론) -->
-    <div id="ammo-select-modal" class="fixed inset-0 bg-black/85 hidden flex items-center justify-center z-50 p-4 backdrop-blur-md">
-        <div class="hud-panel rounded-3xl p-5 sm:p-6 max-w-lg w-full text-center shadow-2xl border-2 border-yellow-400 relative">
-            <div class="inline-block px-3 py-1 rounded-full bg-yellow-500/20 text-yellow-300 text-xs font-bold mb-2">방정식 완전 정복 달성!</div>
-            <h4 class="text-xl sm:text-2xl font-impact text-yellow-300 mb-1">전술 포탄을 선택하세요!</h4>
-            <p id="synchro-bonus-label" class="text-xs text-indigo-200 mb-4">우리 팀의 전술에 맞는 포탄을 발사하여 전세를 장악하세요.</p>
-
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
-                <!-- 메가 화염탄 -->
-                <button onclick="chooseSpecialAmmo('mega_fire')" class="p-3.5 rounded-2xl bg-gradient-to-b from-rose-700/80 to-red-950 border-2 border-rose-500 hover:border-yellow-300 text-left transition active:scale-95 flex flex-col justify-between">
-                    <div>
-                        <div class="text-3xl mb-1">🔥</div>
-                        <div class="font-impact text-rose-300 text-sm">메가 화염탄</div>
-                        <p class="text-[10px] text-rose-100 mt-1">적 성채에 막대한 대미지! (-35 HP)</p>
-                    </div>
-                    <span class="mt-3 px-2 py-1 rounded bg-rose-600/60 text-[10px] text-center font-bold text-yellow-200">초강력 폭격</span>
-                </button>
-
-                <!-- 먹구름 방해탄 -->
-                <button onclick="chooseSpecialAmmo('smoke')" class="p-3.5 rounded-2xl bg-gradient-to-b from-slate-700/80 to-slate-950 border-2 border-slate-400 hover:border-yellow-300 text-left transition active:scale-95 flex flex-col justify-between">
-                    <div>
-                        <div class="text-3xl mb-1">💨</div>
-                        <div class="font-impact text-slate-200 text-sm">먹구름 방해탄</div>
-                        <p class="text-[10px] text-slate-300 mt-1">상대 화면에 짙은 연막 살포 + (-15 HP)</p>
-                    </div>
-                    <span class="mt-3 px-2 py-1 rounded bg-slate-600/60 text-[10px] text-center font-bold text-cyan-200">시야 마비</span>
-                </button>
-
-                <!-- 긴급 수리 드론 -->
-                <button onclick="chooseSpecialAmmo('repair')" class="p-3.5 rounded-2xl bg-gradient-to-b from-emerald-700/80 to-emerald-950 border-2 border-emerald-500 hover:border-yellow-300 text-left transition active:scale-95 flex flex-col justify-between">
-                    <div>
-                        <div class="text-3xl mb-1">🛡️</div>
-                        <div class="font-impact text-emerald-300 text-sm">수리 드론</div>
-                        <p class="text-[10px] text-emerald-100 mt-1">우리 성벽 내구도 즉각 회복 (+25 HP)</p>
-                    </div>
-                    <span class="mt-3 px-2 py-1 rounded bg-emerald-600/60 text-[10px] text-center font-bold text-emerald-200">성벽 복구</span>
-                </button>
-            </div>
-
-            <div class="text-[11px] text-slate-400">💡 4단계 발사 담당자가 포탄을 선택하면 즉시 대포가 발사됩니다!</div>
-        </div>
-    </div>
-
-    <!-- 🎈 5. 공중 보급 돌발 퀴즈 모달 -->
-    <div id="balloon-quiz-modal" class="fixed inset-0 bg-black/80 hidden flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-        <div class="hud-panel rounded-3xl p-5 max-w-sm w-full text-center shadow-2xl border-2 border-amber-400">
-            <div class="text-4xl mb-2">🎁</div>
-            <h4 class="text-lg font-impact text-amber-300 mb-1">공중 보급 스피드 퀴즈!</h4>
-            <p class="text-xs text-indigo-200 mb-3">가장 먼저 맞힌 팀에게 [상대 4초 빙결] 스킬 지급!</p>
-            <div id="balloon-quiz-expr" class="text-2xl font-impact text-yellow-300 bg-black/50 py-2 rounded-xl mb-3">(-8) + 15 = ?</div>
-            <div class="flex gap-2 mb-2">
-                <input type="number" id="balloon-quiz-input" placeholder="정답" class="w-full px-3 py-2 text-center font-impact text-lg rounded-xl bg-slate-900 border border-amber-400 text-yellow-300 focus:outline-none" onkeydown="if(event.key==='Enter') submitBalloonQuiz()">
-                <button onclick="submitBalloonQuiz()" class="px-5 py-2 rounded-xl bg-amber-400 text-indigo-950 font-impact hover:bg-amber-300">제출</button>
-            </div>
-            <button onclick="closeBalloonModal()" class="text-xs text-slate-400 hover:text-white underline">닫기</button>
-        </div>
-    </div>
-
-    <!-- General Message Modal -->
-    <div id="game-modal" class="fixed inset-0 bg-black/80 hidden flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-        <div class="hud-panel rounded-3xl p-6 max-w-sm w-full text-center shadow-2xl border border-indigo-600">
-            <div id="modal-icon" class="text-4xl mb-2">👑</div>
-            <h4 id="modal-title" class="text-xl font-impact text-yellow-400 mb-2">게임 종료</h4>
-            <p id="modal-desc" class="text-xs sm:text-sm text-indigo-100 mb-5 leading-relaxed">상세 내용</p>
-            <button onclick="closeGameModal()" class="px-6 py-2 rounded-xl bg-yellow-400 text-indigo-950 font-impact text-sm hover:bg-yellow-300 transition">확인</button>
-        </div>
-    </div>
-
-    <!-- Footer -->
-    <footer class="w-full max-w-6xl mx-auto px-4 py-2 text-center text-[10px] text-indigo-400 border-t border-indigo-950/60">
-        중학교 1학년 일차방정식 실시간 멀티플레이 교육용 웹앱 | 포커스 타워 디펜스
-    </footer>
-
-    <script>
-        // ==========================================
-        // 1. 무한 랜덤 일차방정식 생성기 (중1 교과서 정수 해 보장)
-        // 형태: A(x + B) = C*x + D
-        // 전개: Ax + AB = Cx + D
-        // 1단계: 좌변 분배 상수 = A * B
-        // 2단계: x항 좌변 이항 후 x 계수 = A - C
-        // 3단계: 상수항 우변 이항 후 우변 상수 = D - (A * B)
-        // 4단계: 최종 해 = x
-        // ==========================================
         function generateRandomProblem() {
-            let A, B, C, x, D;
+            // Form: a(x + b) = c*x + d
+            // Expansion: a*x + (a*b) = c*x + d
+            // Transpose x: (a - c)*x
+            // Transpose const: d - (a*b)
+            // Solution: x = (d - a*b) / (a - c)
+            let a, b, c, x, d;
             let attempts = 0;
-            while (attempts++ < 300) {
-                // A: 2 ~ 4 (분배법칙 괄호 앞 계수)
-                A = Math.floor(Math.random() * 3) + 2;
-                // B: -5 ~ 5 (0 제외)
-                B = Math.floor(Math.random() * 11) - 5;
-                if (B === 0) B = 2;
-                // C: 1 ~ 3 (A와 달라야 함)
-                C = Math.floor(Math.random() * 3) + 1;
-                if (A === C) C = A + 1;
-                // 정수 해 x: -6 ~ 6 (0 제외)
-                x = Math.floor(Math.random() * 13) - 6;
-                if (x === 0) x = 3;
 
-                // Ax + AB = Cx + D  =>  D = (A - C)*x + AB
-                D = (A - C) * x + (A * B);
+            do {
+                attempts++;
+                x = Math.floor(Math.random() * 11) - 5; // x in [-5, 5]
+                if (x === 0) x = 2;
 
-                // D의 크기가 너무 크지 않도록 제한 (-25 ~ 25)
-                if (Math.abs(D) <= 25) {
-                    break;
-                }
-            }
+                a = Math.floor(Math.random() * 4) + 2; // a in [2, 5]
+                b = Math.floor(Math.random() * 9) - 4; // b in [-4, 4], non-zero
+                if (b === 0) b = 3;
 
-            const step1Val = A * B; // 전개 시 좌변 상수값
-            const step2Val = A - C; // x항 좌변 이항 시 계수
-            const step3Val = D - step1Val; // 상수항 우변 정리 시 상수값
-            const step4Val = x;     // 최종 해
+                c = Math.floor(Math.random() * 3) + 1; // c in [1, 3]
+                if (c === a) c = a - 1; // ensure a != c
 
-            const leftPart = `${A}(x ${B >= 0 ? '+ ' + B : '- ' + Math.abs(B)})`;
-            const rightPart = `${C === 1 ? 'x' : C + 'x'} ${D >= 0 ? '+ ' + D : '- ' + Math.abs(D)}`;
-            const exprString = `${leftPart} = ${rightPart}`;
+                // d = (a - c)*x + a*b
+                d = (a - c) * x + (a * b);
+            } while (attempts < 50 && (Math.abs(d) > 35 || d === 0));
+
+            const bStr = b > 0 ? `+ ${b}` : `- ${Math.abs(b)}`;
+            const dStr = d > 0 ? `+ ${d}` : `- ${Math.abs(d)}`;
+            const expr = `${a}(x ${bStr}) = ${c === 1 ? '' : c}x ${dStr}`;
 
             return {
-                expr: exprString,
-                A: A,
-                B: B,
-                C: C,
-                D: D,
-                step1: step1Val,
-                step2: step2Val,
-                step3: step3Val,
-                step4: step4Val
+                expr: expr,
+                a: a,
+                b: b,
+                c: c,
+                d: d,
+                step0: a * b,      // 1단계: 괄호 풀기 전개 후 상수 (a * b)
+                step1: a - c,      // 2단계: 미지수 좌변 이항 후 계수 (a - c)
+                step2: d - (a * b),// 3단계: 상수항 우변 정리 후 값 (d - a*b)
+                step3: x           // 4단계: 최종 해 x
             };
         }
 
-        // 중1 정수·유리수 연산 스피드 암산 퀴즈 생성기 (요격 및 풍선용)
+        // Quick arithmetic generator for interception & supply balloon
         function generateQuickMathQuiz() {
-            const types = ['add', 'sub', 'mul'];
-            const type = types[Math.floor(Math.random() * types.length)];
-            let n1 = Math.floor(Math.random() * 15) - 7;
-            let n2 = Math.floor(Math.random() * 15) - 7;
-            if (n1 === 0) n1 = 3;
-            if (n2 === 0) n2 = -2;
-
-            let expr = '';
-            let ans = 0;
-            if (type === 'add') {
-                expr = `(${n1}) + (${n2})`;
-                ans = n1 + n2;
-            } else if (type === 'sub') {
-                expr = `(${n1}) - (${n2})`;
-                ans = n1 - n2;
+            const op = Math.random() < 0.5 ? 'mul' : 'add';
+            if (op === 'mul') {
+                const a = (Math.floor(Math.random() * 7) + 2) * (Math.random() < 0.5 ? -1 : 1);
+                const b = (Math.floor(Math.random() * 6) + 2) * (Math.random() < 0.5 ? -1 : 1);
+                return { expr: `(${a}) × (${b}) = ?`, ans: a * b };
             } else {
-                n1 = Math.floor(Math.random() * 9) - 4;
-                n2 = Math.floor(Math.random() * 9) - 4;
-                if (n1 === 0) n1 = 2;
-                if (n2 === 0) n2 = -3;
-                expr = `(${n1}) × (${n2})`;
-                ans = n1 * n2;
+                const a = Math.floor(Math.random() * 19) - 9;
+                const b = Math.floor(Math.random() * 19) - 9;
+                return { expr: `(${a}) + (${b}) = ?`, ans: a + b };
             }
-            return { expr: `${expr} = ?`, ans: ans };
         }
-
-        // ==========================================
-        // 2. 전역 상태 및 실시간 동기화 채널
-        // ==========================================
-        let currentUserName = '';
-        let currentRoom = '';
-        let myTeam = ''; // 'alpha' or 'beta'
-        let myRoleIndex = 0; // 0, 1, 2, 3
-        let lastKnownRoomData = null;
-
-        // ⚡ 퍼펙트 싱크로 & 속도 측정 변수
-        let currentProblemStartTime = Date.now();
-        let mistakesOnCurrentProblem = 0;
-        let isPerfectSynchroActive = false;
-
-        // 🛡️ 상대 포탄 요격 시스템 변수
-        let currentInterceptProblem = null;
-        let fortressShieldActive = { alpha: false, beta: false };
-
-        // 💨 먹구름 방해탄 변수
-        let smokeWipesRemaining = 5;
-
-        // 🎈 보급 풍선 타이머
-        let balloonSpawnInterval = null;
-        let currentBalloonQuiz = null;
-
-        // Multi-tab zero-delay BroadcastChannel for bulletproof zero-delay testing
-        let bc = null;
 
         function createInitialRoomData() {
             return {
@@ -553,148 +526,184 @@
                 alphaProblem: generateRandomProblem(),
                 betaProblem: generateRandomProblem(),
                 lastAttack: null,
+                lastRepair: null,
                 smokeTarget: null,
+                smokeId: 0,
                 frozenTeam: null,
+                freezeId: 0,
+                activeBalloon: null,
+                balloonSpawnCount: 0,
+                maxBalloons: 3,
                 updatedAt: Date.now()
             };
         }
 
         window.joinTeam = async function(team) {
-            sfx.init();
-            const nameInput = document.getElementById('player-name').value.trim();
-            const roomInput = document.getElementById('room-code').value.trim();
+            const name = document.getElementById('player-name').value.trim();
+            const code = document.getElementById('room-code').value.trim();
 
-            if (!nameInput) {
-                showModal('대원 등록 필요', '대원 닉네임을 입력해주세요!');
+            if (!name) {
+                showGeneralModal('입력 오류', '대원 닉네임을 입력해 주세요!');
                 return;
             }
-            if (!roomInput) {
-                showModal('방 코드 필요', '배틀룸 코드를 입력해주세요!');
+            if (!code) {
+                showGeneralModal('입력 오류', '배틀룸 코드를 입력해 주세요!');
                 return;
             }
 
-            currentUserName = nameInput;
-            currentRoom = roomInput.toUpperCase();
+            currentUserName = name;
+            currentRoomCode = code;
             myTeam = team;
 
-            document.getElementById('room-code-tag').innerText = `방: ${currentRoom}`;
+            document.getElementById('lobby-status').innerText = "전장에 접속 중...";
 
-            // Initialize BroadcastChannel
+            // Setup multi-tab BroadcastChannel for zero-delay local simulation
             try {
-                if (bc) bc.close();
-                bc = new BroadcastChannel(`tower_defense_${currentRoom}`);
-                bc.onmessage = (event) => {
-                    if (event.data && event.data.type === 'SYNC_ROOM') {
-                        applyRoomState(event.data.payload, false);
+                if (window.BroadcastChannel) {
+                    if (bc) bc.close();
+                    bc = new BroadcastChannel(`focus_tower_${currentRoomCode}`);
+                    bc.onmessage = (event) => {
+                        if (event.data && event.data.type === 'SYNC_STATE') {
+                            applyRoomState(event.data.payload, false);
+                        }
+                    };
+                }
+            } catch (e) {}
+
+            let initialData = createInitialRoomData();
+
+            try {
+                if (!useFallback && db) {
+                    const roomRef = doc(collection(db, 'artifacts', appId, 'public', 'data', 'tower_rooms'), currentRoomCode);
+                    const snap = await getDoc(roomRef);
+
+                    if (snap.exists()) {
+                        initialData = snap.data();
                     }
-                };
-            } catch(e) {}
 
-            // Load initial state from localStorage or create new
-            const storageKey = `tower_room_${currentRoom}`;
-            let data = null;
-            try {
-                const saved = localStorage.getItem(storageKey);
-                if (saved) data = JSON.parse(saved);
-            } catch(e) {}
+                    initialData.alphaMembers = (initialData.alphaMembers || []).filter(m => m !== currentUserName);
+                    initialData.betaMembers = (initialData.betaMembers || []).filter(m => m !== currentUserName);
 
-            if (!data) {
-                data = createInitialRoomData();
+                    if (team === 'alpha') initialData.alphaMembers.push(currentUserName);
+                    else initialData.betaMembers.push(currentUserName);
+
+                    initialData.updatedAt = Date.now();
+
+                    await setDoc(roomRef, initialData, { merge: true });
+                    startFirestoreListener(roomRef);
+                } else {
+                    initialData.alphaMembers = (initialData.alphaMembers || []).filter(m => m !== currentUserName);
+                    initialData.betaMembers = (initialData.betaMembers || []).filter(m => m !== currentUserName);
+                    if (team === 'alpha') initialData.alphaMembers.push(currentUserName);
+                    else initialData.betaMembers.push(currentUserName);
+                }
+            } catch (err) {
+                useFallback = true;
             }
 
-            // Clean existing duplicates and assign user
-            data.alphaMembers = (data.alphaMembers || []).filter(m => m !== currentUserName);
-            data.betaMembers = (data.betaMembers || []).filter(m => m !== currentUserName);
+            applyRoomState(initialData, true);
 
-            if (myTeam === 'alpha') {
-                data.alphaMembers.push(currentUserName);
-                myRoleIndex = (data.alphaMembers.length - 1) % 4;
-            } else {
-                data.betaMembers.push(currentUserName);
-                myRoleIndex = (data.betaMembers.length - 1) % 4;
-            }
-
-            data.updatedAt = Date.now();
-            await syncStateUpdate(data);
-
-            // Switch Screen
+            // Switch to Battle Screen
             document.getElementById('lobby-screen').classList.add('hidden');
             document.getElementById('battle-screen').classList.remove('hidden');
             initCanvas();
             sfx.success();
 
-            // 40초 주기 공중 보급 풍선 이벤트 가동
-            if (!balloonSpawnInterval) {
-                balloonSpawnInterval = setInterval(() => {
-                    triggerSupplyBalloon();
-                }, 40000);
+            // Periodic balloon spawner (3 times per game, synchronized across room)
+            if (!balloonCheckInterval) {
+                balloonCheckInterval = setInterval(checkAndManageBalloons, 5000);
+            }
+
+            // Synchro timer interval
+            if (!synchroTimerInterval) {
+                currentProblemStartTime = Date.now();
+                mistakesOnCurrentProblem = 0;
+                synchroTimerInterval = setInterval(updateSynchroGauge, 250);
             }
         };
+
+        function startFirestoreListener(roomRef) {
+            if (unsubscribeRoom) unsubscribeRoom();
+            unsubscribeRoom = onSnapshot(roomRef, (snap) => {
+                if (!snap.exists()) return;
+                applyRoomState(snap.data(), false);
+            }, () => { useFallback = true; });
+        }
 
         function applyRoomState(data, broadcastEcho = false) {
             lastKnownRoomData = data;
 
-            // 🚨 포탄 발사 감지 및 상대 팀 요격 알림 작동
+            // Attack projectile detection
             if (data.lastAttack && (!window.lastObservedAttackId || window.lastObservedAttackId !== data.lastAttack.id)) {
                 window.lastObservedAttackId = data.lastAttack.id;
                 fireCannonProjectile(data.lastAttack.fromTeam, data.lastAttack.toTeam, data.lastAttack.dmg, data.lastAttack.ammoType, data.lastAttack.isSynchro);
 
-                // 내가 방어팀인 경우 긴급 요격 퀴즈 활성화
-                if (data.lastAttack.toTeam === myTeam && data.lastAttack.ammoType !== 'repair') {
+                // If my team is defending, trigger interception alert
+                if (data.lastAttack.toTeam === myTeam) {
                     triggerInterceptionAlert();
                 }
             }
 
-            // 💨 먹구름 방해탄 피격 처리
+            // Repair Drone detection
+            if (data.lastRepair && (!window.lastObservedRepairId || window.lastObservedRepairId !== data.lastRepair.id)) {
+                window.lastObservedRepairId = data.lastRepair.id;
+                deployRepairDrone(data.lastRepair.team, data.lastRepair.heal, data.lastRepair.isSynchro);
+            }
+
+            // Smokescreen cover
             if (data.smokeTarget === myTeam && (!window.lastObservedSmokeId || window.lastObservedSmokeId !== data.smokeId)) {
                 window.lastObservedSmokeId = data.smokeId;
                 activateSmokeCover();
             }
 
-            // ❄️ 얼음 빙결 상태 처리 (4초간 입력 동결)
+            // Ice Freeze effect
             if (data.frozenTeam === myTeam && (!window.lastObservedFreezeId || window.lastObservedFreezeId !== data.freezeId)) {
                 window.lastObservedFreezeId = data.freezeId;
                 applyFreezeEffect();
             }
 
-            // Update Fort HP
+            // Balloon sync
+            syncBalloonState(data.activeBalloon);
+
+            // Update UI HUD
             updateHealthBars(data.alphaHp, data.betaHp);
 
-            // Update Team Members UI
-            const alphaList = data.alphaMembers || [];
-            const betaList = data.betaMembers || [];
-            document.getElementById('alpha-members-list').innerText = `대원: ${alphaList.join(', ') || '대기중'}`;
-            document.getElementById('beta-members-list').innerText = `대원: ${betaList.join(', ') || '대기중'}`;
+            const aMembers = data.alphaMembers || [];
+            const bMembers = data.betaMembers || [];
+            document.getElementById('alpha-members').innerText = `대원(${aMembers.length}명): ${aMembers.join(', ') || '대기 중'}`;
+            document.getElementById('beta-members').innerText = `대원(${bMembers.length}명): ${bMembers.join(', ') || '대기 중'}`;
 
-            // Recalculate my assigned role index based on member count
-            const myTeamList = myTeam === 'alpha' ? alphaList : betaList;
-            const myPos = myTeamList.indexOf(currentUserName);
-            const teamSize = Math.max(1, myTeamList.length);
+            // Update Pipeline UI for My Team
+            updatePipelineUI(data);
 
-            // Dynamic Step Interlock according to team size
-            const currentStage = myTeam === 'alpha' ? (data.alphaStage || 0) : (data.betaStage || 0);
-            const currentProb = myTeam === 'alpha' ? data.alphaProblem : data.betaProblem;
-
-            updatePipelineHUD(currentStage, currentProb, myPos, teamSize);
-
-            // Check Victory Conditions
-            if (data.alphaHp <= 0) {
-                showModal('전투 종료', '🔴 베타 요새 대승리! 알파 요새가 함락되었습니다.');
-            } else if (data.betaHp <= 0) {
-                showModal('전투 종료', '🔵 알파 요새 대승리! 베타 요새가 함락되었습니다.');
+            // Check Victory Condition
+            if (data.alphaHp <= 0 || data.betaHp <= 0) {
+                const winner = data.alphaHp <= 0 ? '🔴 베타 요새(백군)' : '🔵 알파 요새(청군)';
+                showGeneralModal('전투 종료', `🏆 ${winner}의 위대한 승리! 성벽이 완전히 함락되었습니다.`);
             }
 
-            if (broadcastEcho) {
+            if (broadcastEcho && bc) {
                 try {
-                    localStorage.setItem(`tower_room_${currentRoom}`, JSON.stringify(data));
-                    if (bc) bc.postMessage({ type: 'SYNC_ROOM', payload: data });
-                } catch(e) {}
+                    bc.postMessage({ type: 'SYNC_STATE', payload: data });
+                } catch (e) {}
+            }
+        }
+
+        async function syncStateUpdate(nextData) {
+            applyRoomState(nextData, true);
+            if (!useFallback && db) {
+                try {
+                    const roomRef = doc(collection(db, 'artifacts', appId, 'public', 'data', 'tower_rooms'), currentRoomCode);
+                    await updateDoc(roomRef, nextData);
+                } catch (e) {
+                    useFallback = true;
+                }
             }
         }
 
         function updateHealthBars(alphaHp, betaHp) {
-            const aHp = Math.max(0, alphaHp);
-            const bHp = Math.max(0, betaHp);
+            const aHp = Math.max(0, Math.min(100, alphaHp));
+            const bHp = Math.max(0, Math.min(100, betaHp));
 
             document.getElementById('alpha-hp-text').innerText = `${aHp} / 100`;
             document.getElementById('alpha-hp-bar').style.width = `${aHp}%`;
@@ -703,161 +712,166 @@
             document.getElementById('beta-hp-bar').style.width = `${bHp}%`;
         }
 
-        function updatePipelineHUD(stage, prob, myPos, teamSize) {
-            if (!prob) return;
+        function updatePipelineUI(data) {
+            const team = myTeam;
+            const myMembers = team === 'alpha' ? (data.alphaMembers || []) : (data.betaMembers || []);
+            const currentStage = team === 'alpha' ? (data.alphaStage || 0) : (data.betaStage || 0);
+            const currentProb = team === 'alpha' ? data.alphaProblem : data.betaProblem;
 
-            document.getElementById('equation-text').innerText = prob.expr;
+            if (!currentProb) return;
 
-            // My Team Badges
-            const myTeamPill = document.getElementById('my-team-pill');
-            if (myTeam === 'alpha') {
-                myTeamPill.className = "text-xs px-3 py-1 rounded-full font-bold bg-blue-900/60 text-blue-300 border border-blue-500/50";
-                myTeamPill.innerText = "🔵 알파 팀";
+            document.getElementById('equation-display').innerText = currentProb.expr;
+
+            // My Team Badge
+            const teamBadge = document.getElementById('my-team-badge');
+            if (team === 'alpha') {
+                teamBadge.innerText = '🔵 알파 요새 (청군)';
+                teamBadge.className = 'text-xs px-3.5 py-1.5 bg-blue-500/25 text-blue-300 border border-blue-400 rounded-full font-bold';
             } else {
-                myTeamPill.className = "text-xs px-3 py-1 rounded-full font-bold bg-rose-900/60 text-rose-300 border border-rose-500/50";
-                myTeamPill.innerText = "🔴 베타 팀";
+                teamBadge.innerText = '🔴 베타 요새 (백군)';
+                teamBadge.className = 'text-xs px-3.5 py-1.5 bg-red-500/25 text-red-300 border border-red-400 rounded-full font-bold';
             }
 
-            // Step Trackers
-            for (let i = 0; i < 4; i++) {
-                const pill = document.getElementById(`step-pill-${i}`);
-                if (i === stage) {
-                    pill.className = "p-2 rounded-xl bg-yellow-500/20 border-2 border-yellow-400 text-yellow-300 font-bold animate-pulse shadow-md";
-                } else if (i < stage) {
-                    pill.className = "p-2 rounded-xl bg-emerald-950/70 border border-emerald-500 text-emerald-300";
-                } else {
-                    pill.className = "p-2 rounded-xl bg-slate-900/80 border border-indigo-900 text-slate-500";
-                }
+            // Determine who should solve currentStage (Dynamic Role Distribution for 1~4 members)
+            const teamSize = Math.max(1, myMembers.length);
+            const myIndex = myMembers.indexOf(currentUserName);
+            const activeMemberIndex = currentStage % teamSize;
+            const activeMemberName = myMembers[activeMemberIndex] || '아군 대원';
+            const isMyTurn = (myIndex === activeMemberIndex) || (myIndex === -1);
+
+            // My Assigned Role Label
+            const roleBadge = document.getElementById('my-role-badge');
+            const roleDescriptions = [
+                "① 괄호 전개 파트 전담",
+                "② 미지수 좌변 이항 전담",
+                "③ 상수항 우변 정리 전담",
+                "④ 최종 해 도출 & 발사 전담"
+            ];
+            roleBadge.innerText = `내 배정 역할: ${roleDescriptions[(myIndex >= 0 ? myIndex : 0) % 4]}`;
+
+            // Step Instruction Text (No answers spoiled!)
+            const instEl = document.getElementById('step-instruction');
+            if (currentStage === 0) {
+                instEl.innerText = "【1단계: 괄호 풀기】 분배법칙을 전개했을 때 좌변 괄호 안의 상수값을 입력하세요!";
+            } else if (currentStage === 1) {
+                instEl.innerText = "【2단계: 미지수 이항】 x항을 모두 좌변으로 모았을 때의 x 계수를 입력하세요!";
+            } else if (currentStage === 2) {
+                instEl.innerText = "【3단계: 동류항 정리】 상수항을 모두 우변으로 모았을 때의 계산값을 입력하세요!";
+            } else if (currentStage === 3) {
+                instEl.innerText = "【4단계: 최종 해 도출】 양변을 정리하여 얻은 최종 x 값을 입력하고 포탄을 장전하세요!";
             }
 
-            // Dynamic Step Interlock
-            let isMyTurn = false;
-            let roleTitle = "";
-
-            if (teamSize === 1) {
-                isMyTurn = true;
-                roleTitle = `전천후 총사령관 (${stage + 1}단계 수행 중)`;
-            } else if (teamSize === 2) {
-                if (myPos === 0) {
-                    roleTitle = "대원 1: 분배 & x이항 전담 (1, 2단계)";
-                    isMyTurn = (stage === 0 || stage === 1);
-                } else {
-                    roleTitle = "대원 2: 동류항 & 최종 해 전담 (3, 4단계)";
-                    isMyTurn = (stage === 2 || stage === 3);
-                }
-            } else if (teamSize === 3) {
-                if (myPos === 0) {
-                    roleTitle = "대원 1: 괄호 분배법칙 전담 (1단계)";
-                    isMyTurn = (stage === 0);
-                } else if (myPos === 1) {
-                    roleTitle = "대원 2: x항 이항 & 동류항 전담 (2, 3단계)";
-                    isMyTurn = (stage === 1 || stage === 2);
-                } else {
-                    roleTitle = "대원 3: 최종 해 도출 & 포탄 발사 (4단계)";
-                    isMyTurn = (stage === 3);
-                }
-            } else { // 4인 모둠 (완벽한 1인 1단계 분업)
-                const roleTitles = [
-                    "대원 1: 【1단계 괄호 분배법칙】 전담",
-                    "대원 2: 【2단계 x항 이항】 전담",
-                    "대원 3: 【3단계 상수항 정리】 전담",
-                    "대원 4: 【4단계 최종 해(x) 발사】 전담"
-                ];
-                roleTitle = roleTitles[myPos % 4];
-                isMyTurn = (stage === (myPos % 4));
-            }
-
-            document.getElementById('my-role-pill').innerText = roleTitle;
-
-            // Step Instruction Text without direct answer leakage
-            const instruction = document.getElementById('step-instruction');
-            if (stage === 0) {
-                instruction.innerHTML = `【1단계: 괄호 풀기】 분배법칙을 적용하여 괄호를 풀었을 때, 좌변의 <b>상수값</b>을 계산하여 입력하세요!`;
-            } else if (stage === 1) {
-                instruction.innerHTML = `【2단계: x항 이항】 우변의 x항을 좌변으로 이항했을 때, 좌변의 <b>x의 계수</b>를 입력하세요!`;
-            } else if (stage === 2) {
-                instruction.innerHTML = `【3단계: 동류항 정리】 좌변의 상수항을 우변으로 이항하여 계산한 우변의 <b>상수값</b>을 입력하세요!`;
-            } else if (stage === 3) {
-                instruction.innerHTML = `【4단계: 최종 해(x)】 양변을 계수로 나누어 <b>x의 해</b>를 구하고 전술 포탄을 선택하세요!`;
-            }
-
-            // Lock / Unlock inputs based on turn
-            const inputContainer = document.getElementById('turn-input-container');
-            const waitingBox = document.getElementById('waiting-teammate-box');
-            const actionBox = document.getElementById('action-box');
+            // Role Interlock
+            const inputControls = document.getElementById('input-controls');
+            const waitingNotice = document.getElementById('waiting-notice');
+            const currentActorEl = document.getElementById('current-actor-name');
 
             if (isMyTurn) {
-                inputContainer.classList.remove('hidden');
-                waitingBox.classList.add('hidden');
-                actionBox.classList.add('turn-active');
+                inputControls.classList.remove('hidden');
+                waitingNotice.classList.add('hidden');
             } else {
-                inputContainer.classList.add('hidden');
-                waitingBox.classList.remove('hidden');
-                actionBox.classList.remove('turn-active');
-                document.getElementById('waiting-teammate-text').innerText = `현재 팀원이 ${stage + 1}단계를 계산 중입니다. 함께 식을 보고 조언해 주세요!`;
+                inputControls.classList.add('hidden');
+                waitingNotice.classList.remove('hidden');
+                currentActorEl.innerText = activeMemberName;
+            }
+
+            // Highlight Step Tracker Cards
+            for (let s = 0; s < 4; s++) {
+                const card = document.getElementById(`stage-card-${s}`);
+                if (s === currentStage) {
+                    card.className = "p-2.5 rounded-xl border-2 transition-all bg-yellow-400/20 border-yellow-300 text-yellow-300 font-bold animate-pulse";
+                } else if (s < currentStage) {
+                    card.className = "p-2.5 rounded-xl border transition-all bg-emerald-950/60 border-emerald-500/60 text-emerald-300 font-semibold";
+                } else {
+                    card.className = "p-2.5 rounded-xl border transition-all bg-slate-900/60 border-slate-700 text-slate-500";
+                }
             }
         }
 
-        window.submitCurrentStep = async function() {
-            const input = document.getElementById('step-answer-input');
-            const val = parseFloat(input.value.trim());
+        window.submitPipelineStep = async function() {
+            if (!lastKnownRoomData) return;
+            const inputEl = document.getElementById('step-input');
+            const val = parseFloat(inputEl.value.trim());
 
             if (isNaN(val)) {
-                showStepFeedback("숫자를 정확히 입력해주세요!", true);
+                showStepFeedback("숫자를 입력해 주세요!", true);
+                sfx.error();
                 return;
             }
 
-            if (!lastKnownRoomData) return;
+            const data = lastKnownRoomData;
+            const currentStage = myTeam === 'alpha' ? (data.alphaStage || 0) : (data.betaStage || 0);
+            const prob = myTeam === 'alpha' ? data.alphaProblem : data.betaProblem;
 
-            const currentStage = myTeam === 'alpha' ? lastKnownRoomData.alphaStage : lastKnownRoomData.betaStage;
-            const currentProb = myTeam === 'alpha' ? lastKnownRoomData.alphaProblem : lastKnownRoomData.betaProblem;
+            let expected = null;
+            if (currentStage === 0) expected = prob.step0;
+            else if (currentStage === 1) expected = prob.step1;
+            else if (currentStage === 2) expected = prob.step2;
+            else if (currentStage === 3) expected = prob.step3;
 
-            let expectedVal = 0;
-            if (currentStage === 0) expectedVal = currentProb.step1;
-            else if (currentStage === 1) expectedVal = currentProb.step2;
-            else if (currentStage === 2) expectedVal = currentProb.step3;
-            else if (currentStage === 3) expectedVal = currentProb.step4;
-
-            if (val === expectedVal) {
-                input.value = '';
+            if (val === expected) {
+                inputEl.value = '';
                 sfx.success();
 
-                // 4단계 모두 완료 -> 퍼펙트 싱크로 검증 후 [특수 포탄 선택 모달] 오픈!
-                if (currentStage === 3) {
-                    const elapsedSeconds = (Date.now() - currentProblemStartTime) / 1000;
-                    // 32초 이내 무감점 통과 시 ⚡ 퍼펙트 싱크로 발동!
-                    isPerfectSynchroActive = (elapsedSeconds <= 32 && mistakesOnCurrentProblem === 0);
-                    
-                    if (isPerfectSynchroActive) {
-                        sfx.synchro();
-                        showStepFeedback("⚡ 퍼펙트 싱크로 달성! (초고속 무오답 연산 보너스 +10 적용!)", false);
-                        document.getElementById('synchro-bonus-label').innerText = "⚡ 퍼펙트 싱크로 활성화! 모든 포탄의 공격력/회복량에 +10 보너스가 적용됩니다!";
-                    } else {
-                        document.getElementById('synchro-bonus-label').innerText = "우리 팀의 전술에 맞는 포탄을 발사하여 전세를 장악하세요.";
-                    }
+                if (currentStage < 3) {
+                    // Advance to next step
+                    const nextData = { ...data };
+                    if (myTeam === 'alpha') nextData.alphaStage = currentStage + 1;
+                    else nextData.betaStage = currentStage + 1;
+                    nextData.updatedAt = Date.now();
 
-                    // 포탄 선택 모달 띄우기
-                    document.getElementById('ammo-select-modal').classList.remove('hidden');
-                    return;
+                    showStepFeedback(`✨ [${currentStage + 1}단계 완료] 훌륭합니다! 다음 대원에게 바통을 넘깁니다!`, false);
+                    await syncStateUpdate(nextData);
+                } else {
+                    // Step 4 Completed -> Open Ammo Selector Modal
+                    showStepFeedback("🎉 일차방정식 해결 완료! 전술 포탄을 선택하세요!", false);
+                    openAmmoSelectModal();
                 }
-
-                // 1~3단계 일반 통과
-                const nextData = { ...lastKnownRoomData };
-                const nextStage = currentStage + 1;
-                showStepFeedback(`✨ ${currentStage + 1}단계 통과! 다음 대원에게 바통을 넘깁니다!`, false);
-
-                if (myTeam === 'alpha') nextData.alphaStage = nextStage;
-                else nextData.betaStage = nextStage;
-                nextData.updatedAt = Date.now();
-
-                await syncStateUpdate(nextData);
-
             } else {
-                sfx.error();
                 mistakesOnCurrentProblem++;
-                showStepFeedback(`❌ 계산이 맞지 않습니다! 부호와 식을 다시 확인해보세요.`, true);
+                sfx.error();
+                showStepFeedback("❌ 계산이 맞지 않습니다! 부호와 사칙연산을 다시 확인해 보세요.", true);
             }
         };
+
+        function showStepFeedback(text, isError) {
+            const el = document.getElementById('battle-feedback');
+            el.innerText = text;
+            el.className = isError 
+                ? "text-sm font-bold text-rose-400 min-h-[24px] mt-3 animate-pulse" 
+                : "text-sm font-bold text-emerald-400 min-h-[24px] mt-3";
+        }
+
+        // Synchro bonus timer
+        function updateSynchroGauge() {
+            const elapsed = (Date.now() - currentProblemStartTime) / 1000;
+            const remaining = Math.max(0, 32 - elapsed);
+            const synchroTimerEl = document.getElementById('synchro-timer');
+            if (synchroTimerEl) synchroTimerEl.innerText = remaining.toFixed(1);
+
+            const badge = document.getElementById('synchro-badge');
+            if (remaining > 0 && mistakesOnCurrentProblem === 0) {
+                isPerfectSynchroActive = true;
+                badge.className = 'text-xs px-3.5 py-1.5 bg-yellow-500/20 text-yellow-300 border border-yellow-400 rounded-full font-bold animate-pulse';
+            } else {
+                isPerfectSynchroActive = false;
+                badge.className = 'text-xs px-3.5 py-1.5 bg-slate-800 text-slate-400 border border-slate-700 rounded-full font-bold';
+            }
+        }
+
+        function openAmmoSelectModal() {
+            const modal = document.getElementById('ammo-select-modal');
+            const bonusText = document.getElementById('synchro-bonus-text');
+            if (isPerfectSynchroActive) {
+                sfx.synchro();
+                bonusText.innerText = "⚡ 퍼펙트 싱크로 달성! (대미지/수리량 +10 황금 보너스 적용!)";
+                bonusText.className = "text-xs font-bold text-yellow-300 animate-bounce";
+            } else {
+                bonusText.innerText = "일반 화력으로 포탄을 발사합니다.";
+                bonusText.className = "text-xs text-slate-400";
+            }
+            modal.classList.remove('hidden');
+        }
 
         window.chooseSpecialAmmo = async function(ammoType) {
             document.getElementById('ammo-select-modal').classList.add('hidden');
@@ -867,17 +881,23 @@
             const newProb = generateRandomProblem();
             const bonusDmg = isPerfectSynchroActive ? 10 : 0;
             let attackPayload = null;
+            let repairPayload = null;
 
             if (ammoType === 'mega_fire') {
                 // 🔥 메가 화염탄 (기본 35 대미지 + 싱크로 보너스)
                 const dmg = 35 + bonusDmg;
-                if (myTeam === 'alpha') {
-                    nextData.betaHp = Math.max(0, nextData.betaHp - dmg);
-                    attackPayload = { fromTeam: 'alpha', toTeam: 'beta', dmg: dmg, ammoType: 'mega_fire', isSynchro: isPerfectSynchroActive, id: Date.now() + Math.random() };
-                } else {
-                    nextData.alphaHp = Math.max(0, nextData.alphaHp - dmg);
-                    attackPayload = { fromTeam: 'beta', toTeam: 'alpha', dmg: dmg, ammoType: 'mega_fire', isSynchro: isPerfectSynchroActive, id: Date.now() + Math.random() };
-                }
+                const targetTeam = myTeam === 'alpha' ? 'beta' : 'alpha';
+                if (myTeam === 'alpha') nextData.betaHp = Math.max(0, nextData.betaHp - dmg);
+                else nextData.alphaHp = Math.max(0, nextData.alphaHp - dmg);
+
+                attackPayload = { 
+                    fromTeam: myTeam, 
+                    toTeam: targetTeam, 
+                    dmg: dmg, 
+                    ammoType: 'mega_fire', 
+                    isSynchro: isPerfectSynchroActive, 
+                    id: Date.now() + Math.random() 
+                };
                 showStepFeedback(`🔥 메가 화염탄 폭격 발사! (-${dmg} HP)`, false);
 
             } else if (ammoType === 'smoke') {
@@ -887,22 +907,35 @@
                 if (myTeam === 'alpha') nextData.betaHp = Math.max(0, nextData.betaHp - dmg);
                 else nextData.alphaHp = Math.max(0, nextData.alphaHp - dmg);
 
-                attackPayload = { fromTeam: myTeam, toTeam: targetTeam, dmg: dmg, ammoType: 'smoke', isSynchro: isPerfectSynchroActive, id: Date.now() + Math.random() };
+                attackPayload = { 
+                    fromTeam: myTeam, 
+                    toTeam: targetTeam, 
+                    dmg: dmg, 
+                    ammoType: 'smoke', 
+                    isSynchro: isPerfectSynchroActive, 
+                    id: Date.now() + Math.random() 
+                };
                 nextData.smokeTarget = targetTeam;
                 nextData.smokeId = Date.now();
-                showStepFeedback(`💨 먹구름 방해탄 발사! 상대 요새에 연막을 살포했습니다!`, false);
+                showStepFeedback(`💨 먹구름 방해탄 발사! 상대 요새에 연막 살포!`, false);
 
             } else if (ammoType === 'repair') {
-                // 🛡️ 긴급 수리 드론 (우리 요새 +25 HP 회복)
+                // 🛠️ 수리 드론 (적에게 포탄을 쏘지 않고 아군 성채 상공에서 직접 복구)
                 const heal = 25 + bonusDmg;
                 if (myTeam === 'alpha') nextData.alphaHp = Math.min(100, nextData.alphaHp + heal);
                 else nextData.betaHp = Math.min(100, nextData.betaHp + heal);
 
-                attackPayload = { fromTeam: myTeam, toTeam: myTeam, dmg: 0, ammoType: 'repair', isSynchro: isPerfectSynchroActive, id: Date.now() + Math.random() };
-                showStepFeedback(`🛡️ 수리 드론 배치 완료! 우리 성벽이 +${heal} HP 회복되었습니다!`, false);
+                repairPayload = { 
+                    team: myTeam, 
+                    heal: heal, 
+                    isSynchro: isPerfectSynchroActive, 
+                    id: Date.now() + Math.random() 
+                };
+                nextData.lastRepair = repairPayload;
+                showStepFeedback(`🛠️ 수리 드론 출현! 아군 성채를 직접 나노 수리 중입니다! (+${heal} HP)`, false);
             }
 
-            // 문제 및 단계 초기화
+            // 문제 및 단계 리셋
             if (myTeam === 'alpha') {
                 nextData.alphaProblem = newProb;
                 nextData.alphaStage = 0;
@@ -914,7 +947,6 @@
             if (attackPayload) nextData.lastAttack = attackPayload;
             nextData.updatedAt = Date.now();
 
-            // 타이머 & 감점 리셋
             currentProblemStartTime = Date.now();
             mistakesOnCurrentProblem = 0;
 
@@ -924,30 +956,38 @@
         function triggerInterceptionAlert() {
             sfx.siren();
             currentInterceptProblem = generateQuickMathQuiz();
-            document.getElementById('intercept-expr').innerText = currentInterceptProblem.expr;
-            document.getElementById('intercept-input').value = '';
-            document.getElementById('interception-banner').classList.remove('hidden');
+            const banner = document.getElementById('interception-banner');
+            banner.classList.remove('hidden');
 
-            // 포탄 비행 시간(3.5초) 후 요격 팝업 자동 닫기
+            // 3.8초 후 배너 자동 숨김
             setTimeout(() => {
-                document.getElementById('interception-banner').classList.add('hidden');
-            }, 3600);
+                banner.classList.add('hidden');
+                closeInterceptionModal();
+            }, 3800);
         }
 
-        window.handleInterceptSubmission = function() {
-            const input = document.getElementById('intercept-input');
-            const val = parseFloat(input.value.trim());
+        window.openInterceptionModal = function() {
+            if (!currentInterceptProblem) return;
+            document.getElementById('intercept-quiz-expr').innerText = currentInterceptProblem.expr;
+            document.getElementById('intercept-quiz-input').value = '';
+            document.getElementById('intercept-modal').classList.remove('hidden');
+        };
 
+        window.closeInterceptionModal = function() {
+            document.getElementById('intercept-modal').classList.add('hidden');
+        };
+
+        window.submitInterceptionQuiz = function() {
+            const val = parseFloat(document.getElementById('intercept-quiz-input').value.trim());
             if (currentInterceptProblem && val === currentInterceptProblem.ans) {
-                sfx.shield();
+                sfx.success();
+                closeInterceptionModal();
                 document.getElementById('interception-banner').classList.add('hidden');
-                fortressShieldActive[myTeam] = true;
-                showStepFeedback("🛡️ 요격 미사일 명중! 적의 포탄을 공중에서 완전 무력화했습니다!", false);
-
-                setTimeout(() => { fortressShieldActive[myTeam] = false; }, 4000);
+                activateShieldDome(myTeam);
+                showStepFeedback("🛡️ 요격 성공! 에너지 쉴드 돔이 성벽을 완벽하게 보호했습니다!", false);
+                currentInterceptProblem = null;
             } else {
                 sfx.error();
-                input.value = '';
             }
         };
 
@@ -955,12 +995,13 @@
             smokeWipesRemaining = 5;
             document.getElementById('smoke-wipe-count').innerText = smokeWipesRemaining;
             document.getElementById('smoke-overlay').classList.remove('hidden');
+            sfx.error();
         }
 
         window.wipeSmoke = function() {
             smokeWipesRemaining--;
             document.getElementById('smoke-wipe-count').innerText = smokeWipesRemaining;
-            sfx.chat();
+            sfx.playTone(300, 'triangle', 0.1, 0.1);
             if (smokeWipesRemaining <= 0) {
                 document.getElementById('smoke-overlay').classList.add('hidden');
                 sfx.success();
@@ -969,24 +1010,61 @@
 
         function applyFreezeEffect() {
             sfx.freeze();
-            const actionBox = document.getElementById('action-box');
-            actionBox.classList.add('frozen-effect');
-            showStepFeedback("🥶 상대의 얼음 마법에 걸려 4초간 입력창이 동결됩니다!", true);
+            const box = document.getElementById('action-box');
+            box.classList.add('frozen-effect');
+            showStepFeedback("🥶 상대의 얼음 마법으로 4초간 입력창이 동결되었습니다!", true);
             setTimeout(() => {
-                actionBox.classList.remove('frozen-effect');
+                box.classList.remove('frozen-effect');
             }, 4000);
         }
 
-        function triggerSupplyBalloon() {
+        function checkAndManageBalloons() {
+            if (!lastKnownRoomData) return;
+            const data = lastKnownRoomData;
+
+            // Room representative (first member) schedules balloons
+            const host = (data.alphaMembers && data.alphaMembers[0]) || (data.betaMembers && data.betaMembers[0]);
+            if (host !== currentUserName) return;
+
+            const count = data.balloonSpawnCount || 0;
+            if (count >= 3) return; // Cap at 3 per match
+
+            if (!data.activeBalloon && Math.random() < 0.45) {
+                const quiz = generateQuickMathQuiz();
+                const nextData = { ...data };
+                nextData.activeBalloon = {
+                    id: Date.now(),
+                    expr: quiz.expr,
+                    ans: quiz.ans,
+                    round: count + 1,
+                    expiresAt: Date.now() + 10000 // 10s lifetime
+                };
+                nextData.balloonSpawnCount = count + 1;
+                nextData.updatedAt = Date.now();
+                syncStateUpdate(nextData);
+            }
+        }
+
+        function syncBalloonState(balloon) {
             const btn = document.getElementById('supply-balloon-btn');
-            btn.classList.remove('hidden');
-            setTimeout(() => { btn.classList.add('hidden'); }, 12000); // 12초간 부유
+            const lbl = document.getElementById('balloon-label');
+            if (balloon && Date.now() < balloon.expiresAt) {
+                activeBalloonData = balloon;
+                lbl.innerText = `공중 보급 풍선 난입! (${balloon.round}/3회) [선착순 빙결]`;
+                btn.classList.remove('hidden');
+            } else {
+                btn.classList.add('hidden');
+                activeBalloonData = null;
+                if (!document.getElementById('balloon-quiz-modal').classList.contains('hidden')) {
+                    closeBalloonModal();
+                }
+            }
         }
 
         window.openBalloonQuiz = function() {
+            if (!activeBalloonData) return;
             document.getElementById('supply-balloon-btn').classList.add('hidden');
-            currentBalloonQuiz = generateQuickMathQuiz();
-            document.getElementById('balloon-quiz-expr').innerText = currentBalloonQuiz.expr;
+            document.getElementById('balloon-quiz-expr').innerText = activeBalloonData.expr;
             document.getElementById('balloon-quiz-input').value = '';
             document.getElementById('balloon-quiz-modal').classList.remove('hidden');
         };
@@ -997,17 +1075,18 @@
 
         window.submitBalloonQuiz = async function() {
             const val = parseFloat(document.getElementById('balloon-quiz-input').value.trim());
-            if (currentBalloonQuiz && val === currentBalloonQuiz.ans) {
+            if (activeBalloonData && val === activeBalloonData.ans) {
                 sfx.success();
                 closeBalloonModal();
 
-                const opponentTeam = myTeam === 'alpha' ? 'beta' : 'alpha';
-                showStepFeedback("🎁 공중 보급 획득 성공! 상대 팀 진지를 4초간 꽁꽁 얼렸습니다!", false);
+                const target = myTeam === 'alpha' ? 'beta' : 'alpha';
+                showStepFeedback(`🎁 [${activeBalloonData.round}/3회] 공중 보급 선점! 상대 팀을 4초간 얼렸습니다!`, false);
 
                 if (lastKnownRoomData) {
                     const nextData = { ...lastKnownRoomData };
-                    nextData.frozenTeam = opponentTeam;
+                    nextData.frozenTeam = target;
                     nextData.freezeId = Date.now();
+                    nextData.activeBalloon = null; // Instant pop
                     nextData.updatedAt = Date.now();
                     await syncStateUpdate(nextData);
                 }
@@ -1016,36 +1095,27 @@
             }
         };
 
-        async function syncStateUpdate(nextData) {
-            applyRoomState(nextData, true);
-        }
-
-        function showStepFeedback(text, isError = false) {
-            const msgEl = document.getElementById('feedback-msg');
-            msgEl.innerText = text;
-            msgEl.className = isError 
-                ? "mt-2 text-xs sm:text-sm font-bold text-rose-400 h-5" 
-                : "mt-2 text-xs sm:text-sm font-bold text-emerald-400 h-5";
-        }
-
+        // Quick Cheer broadcast
         window.sendQuickCheer = function(text) {
-            sfx.chat();
-            showStepFeedback(`📢 [팀 신호]: ${text}`, false);
+            showStepFeedback(`📣 [팀 무전] ${text}`, false);
+            sfx.playTone(600, 'sine', 0.15, 0.2);
         };
 
-        function showModal(title, desc) {
-            document.getElementById('modal-title').innerText = title;
-            document.getElementById('modal-desc').innerText = desc;
-            document.getElementById('game-modal').classList.remove('hidden');
-        }
+        window.showGeneralModal = function(title, msg) {
+            document.getElementById('gen-modal-title').innerText = title;
+            document.getElementById('gen-modal-body').innerText = msg;
+            document.getElementById('general-modal').classList.remove('hidden');
+        };
 
-        window.closeGameModal = function() {
-            document.getElementById('game-modal').classList.add('hidden');
+        window.closeGeneralModal = function() {
+            document.getElementById('general-modal').classList.add('hidden');
         };
 
         let canvas, ctx;
         let projectiles = [];
         let particles = [];
+        let repairDrones = [];
+        let fortressShieldActive = { alpha: false, beta: false };
 
         function initCanvas() {
             canvas = document.getElementById('defense-canvas');
@@ -1056,16 +1126,41 @@
         }
 
         function resizeCanvas() {
-            if (!canvas) return;
+            if (!canvas || !canvas.parentElement) return;
             canvas.width = canvas.parentElement.clientWidth;
             canvas.height = canvas.parentElement.clientHeight;
         }
 
-        function fireCannonProjectile(fromTeam, toTeam, dmg, ammoType = 'normal', isSynchro = false) {
+        function activateShieldDome(team) {
+            fortressShieldActive[team] = true;
+            setTimeout(() => { fortressShieldActive[team] = false; }, 3600);
+        }
+
+        function deployRepairDrone(team, healAmount, isSynchro = false) {
+            sfx.repair();
+            const groundY = canvas.height - 25;
+            const targetX = team === 'alpha' ? 65 : canvas.width - 65;
+            const targetY = groundY - 75;
+
+            repairDrones.push({
+                x: targetX,
+                y: targetY - 45,
+                targetX: targetX,
+                targetY: targetY,
+                team: team,
+                healAmount: healAmount,
+                isSynchro: isSynchro,
+                life: 140, // ~2.3s duration
+                maxLife: 140,
+                beamPulse: 0
+            });
+        }
+
+        function fireCannonProjectile(fromTeam, toTeam, dmg, ammoType = 'mega_fire', isSynchro = false) {
             sfx.shoot();
+            const groundY = canvas.height - 35;
             const startX = fromTeam === 'alpha' ? 80 : canvas.width - 80;
             const targetX = toTeam === 'alpha' ? 80 : canvas.width - 80;
-            const groundY = canvas.height - 35;
 
             projectiles.push({
                 x: startX,
@@ -1078,17 +1173,13 @@
                 dmg: dmg,
                 ammoType: ammoType,
                 isSynchro: isSynchro,
-                curveHeight: Math.min(100, canvas.height * 0.45)
+                curveHeight: Math.min(110, canvas.height * 0.5)
             });
         }
 
         function createExplosion(x, y, color) {
-            sfx.explode();
-            const container = document.getElementById('canvas-container');
-            container.classList.add('shake-screen');
-            setTimeout(() => container.classList.remove('shake-screen'), 400);
-
-            for (let i = 0; i < 30; i++) {
+            sfx.explosion();
+            for (let i = 0; i < 28; i++) {
                 const angle = Math.random() * Math.PI * 2;
                 const speed = Math.random() * 5 + 1.5;
                 particles.push({
@@ -1096,7 +1187,7 @@
                     y: y,
                     vx: Math.cos(angle) * speed,
                     vy: Math.sin(angle) * speed,
-                    radius: Math.random() * 4 + 1.5,
+                    radius: Math.random() * 4 + 2,
                     color: color,
                     alpha: 1,
                     decay: Math.random() * 0.03 + 0.02
@@ -1110,159 +1201,211 @@
 
             const groundY = canvas.height - 25;
 
-            // 1. Draw Starry Night Sky
-            ctx.fillStyle = '#0b0f24';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            // 2. Draw Ground
-            ctx.fillStyle = '#1e1b4b';
+            // 1. Draw Battlefield Terrain
+            ctx.fillStyle = '#0f172a';
             ctx.fillRect(0, groundY, canvas.width, 25);
-            ctx.strokeStyle = '#4338ca';
+            ctx.strokeStyle = '#334155';
             ctx.lineWidth = 2;
             ctx.beginPath();
             ctx.moveTo(0, groundY);
             ctx.lineTo(canvas.width, groundY);
             ctx.stroke();
 
-            // 3. Draw Fortresses
+            // 2. Draw Fortresses
             drawFortress(40, groundY, 'alpha');
             drawFortress(canvas.width - 90, groundY, 'beta');
 
-            // 4. Update & Draw Projectiles
-            for (let i = projectiles.length - 1; i >= 0; i--) {
-                const p = projectiles[i];
-                p.progress += 0.015;
-
-                const currX = p.x + (p.targetX - p.x) * p.progress;
-                const arcY = 4 * p.curveHeight * p.progress * (1 - p.progress);
-                const currY = (p.y + (p.targetY - p.y) * p.progress) - arcY;
+            // 3. Draw & Update Nano Repair Drones
+            for (let i = repairDrones.length - 1; i >= 0; i--) {
+                const drone = repairDrones[i];
+                drone.life--;
+                drone.beamPulse += 0.15;
+                const hoverY = drone.targetY + Math.sin(drone.beamPulse) * 4;
 
                 ctx.save();
-                ctx.shadowBlur = p.isSynchro ? 25 : 15;
 
+                // Nano Repair Laser Cone
+                const beamAlpha = 0.35 + Math.sin(drone.beamPulse * 2) * 0.25;
+                const grad = ctx.createLinearGradient(drone.targetX, hoverY, drone.targetX, groundY - 15);
+                grad.addColorStop(0, drone.isSynchro ? `rgba(250, 204, 21, ${beamAlpha})` : `rgba(52, 211, 153, ${beamAlpha})`);
+                grad.addColorStop(1, 'rgba(16, 185, 129, 0.05)');
+
+                ctx.fillStyle = grad;
+                ctx.beginPath();
+                ctx.moveTo(drone.targetX - 22, groundY - 10);
+                ctx.lineTo(drone.targetX + 22, groundY - 10);
+                ctx.lineTo(drone.targetX + 4, hoverY);
+                ctx.lineTo(drone.targetX - 4, hoverY);
+                ctx.closePath();
+                ctx.fill();
+
+                // Drone Body & Rotor
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = drone.isSynchro ? '#facc15' : '#34d399';
+                ctx.fillStyle = '#0f172a';
+                ctx.strokeStyle = drone.isSynchro ? '#fef08a' : '#6ee7b7';
+                ctx.lineWidth = 2;
+
+                ctx.beginPath();
+                ctx.roundRect ? ctx.roundRect(drone.targetX - 16, hoverY - 10, 32, 16, 6) : ctx.rect(drone.targetX - 16, hoverY - 10, 32, 16);
+                ctx.fill();
+                ctx.stroke();
+
+                // Medical Cross
+                ctx.fillStyle = drone.isSynchro ? '#facc15' : '#10b981';
+                ctx.fillRect(drone.targetX - 2, hoverY - 6, 4, 8);
+                ctx.fillRect(drone.targetX - 5, hoverY - 4, 10, 4);
+
+                // Rotors
+                ctx.strokeStyle = '#94a3b8';
+                ctx.lineWidth = 2;
+                const span = Math.abs(Math.cos(drone.beamPulse * 3)) * 14;
+                ctx.beginPath();
+                ctx.moveTo(drone.targetX - 22 - span, hoverY - 12);
+                ctx.lineTo(drone.targetX - 22 + span, hoverY - 12);
+                ctx.moveTo(drone.targetX + 22 - span, hoverY - 12);
+                ctx.lineTo(drone.targetX + 22 + span, hoverY - 12);
+                ctx.stroke();
+
+                // Floating Recovery Text
+                ctx.font = 'bold 13px "Black Han Sans", sans-serif';
+                ctx.fillStyle = drone.isSynchro ? '#fef08a' : '#a7f3d0';
+                ctx.textAlign = 'center';
+                ctx.fillText(`+${drone.healAmount} HP 나노 복구!`, drone.targetX, hoverY - 18);
+
+                ctx.restore();
+
+                // Healing Sparks
+                if (Math.random() < 0.5) {
+                    particles.push({
+                        x: drone.targetX + (Math.random() - 0.5) * 36,
+                        y: groundY - 30 + (Math.random() - 0.5) * 20,
+                        vx: (Math.random() - 0.5) * 1.2,
+                        vy: -Math.random() * 1.5 - 0.5,
+                        radius: Math.random() * 3 + 1,
+                        color: drone.isSynchro ? '#facc15' : '#34d399',
+                        alpha: 1,
+                        decay: 0.04
+                    });
+                }
+
+                if (drone.life <= 0) repairDrones.splice(i, 1);
+            }
+
+            // 4. Draw & Update Projectiles
+            for (let i = projectiles.length - 1; i >= 0; i--) {
+                const p = projectiles[i];
+                p.progress += 0.016;
+
+                const curX = p.x + (p.targetX - p.x) * p.progress;
+                const arcY = Math.sin(p.progress * Math.PI) * p.curveHeight;
+                const curY = p.y + (p.targetY - p.y) * p.progress - arcY;
+
+                ctx.save();
                 if (p.ammoType === 'mega_fire') {
-                    ctx.shadowColor = '#f97316';
-                    ctx.fillStyle = '#ffedd5';
+                    ctx.fillStyle = p.isSynchro ? '#fef08a' : '#f97316';
+                    ctx.shadowBlur = 20;
+                    ctx.shadowColor = '#ef4444';
                 } else if (p.ammoType === 'smoke') {
-                    ctx.shadowColor = '#94a3b8';
-                    ctx.fillStyle = '#f1f5f9';
-                } else if (p.ammoType === 'repair') {
-                    ctx.shadowColor = '#10b981';
-                    ctx.fillStyle = '#a7f3d0';
-                } else {
-                    ctx.shadowColor = p.isSynchro ? '#facc15' : (p.fromTeam === 'alpha' ? '#38bdf8' : '#fb7185');
-                    ctx.fillStyle = p.isSynchro ? '#fef08a' : (p.fromTeam === 'alpha' ? '#bae6fd' : '#fecdd3');
+                    ctx.fillStyle = '#94a3b8';
+                    ctx.shadowBlur = 15;
+                    ctx.shadowColor = '#475569';
                 }
 
                 ctx.beginPath();
-                ctx.arc(currX, currY, p.ammoType === 'mega_fire' ? 11 : 7, 0, Math.PI * 2);
+                ctx.arc(curX, curY, p.isSynchro ? 10 : 8, 0, Math.PI * 2);
                 ctx.fill();
-
-                // Spark trail
-                if (Math.random() < 0.6) {
-                    particles.push({
-                        x: currX,
-                        y: currY,
-                        vx: (Math.random() - 0.5) * 1.5,
-                        vy: (Math.random() - 0.5) * 1.5,
-                        radius: Math.random() * 2.5 + 1,
-                        color: p.ammoType === 'mega_fire' ? '#f97316' : (p.isSynchro ? '#facc15' : '#38bdf8'),
-                        alpha: 0.8,
-                        decay: 0.05
-                    });
-                }
                 ctx.restore();
 
-                // Hit Target
+                // Trail Particles
+                particles.push({
+                    x: curX,
+                    y: curY,
+                    vx: (Math.random() - 0.5) * 1,
+                    vy: (Math.random() - 0.5) * 1,
+                    radius: Math.random() * 3 + 1,
+                    color: p.ammoType === 'smoke' ? '#64748b' : '#fbbf24',
+                    alpha: 0.8,
+                    decay: 0.05
+                });
+
+                // Check Impact
                 if (p.progress >= 1) {
-                    if (fortressShieldActive[p.toTeam]) {
-                        sfx.shield();
+                    const isProtected = fortressShieldActive[p.toTeam];
+                    if (isProtected) {
                         createExplosion(p.targetX, p.targetY, '#38bdf8');
                     } else {
-                        createExplosion(p.targetX, p.targetY, p.ammoType === 'mega_fire' ? '#ef4444' : '#f43f5e');
+                        createExplosion(p.targetX, p.targetY, p.ammoType === 'smoke' ? '#64748b' : '#ef4444');
                     }
                     projectiles.splice(i, 1);
                 }
             }
 
-            // 5. Update & Draw Particles
+            // 5. Draw & Update Explosion Particles
             for (let i = particles.length - 1; i >= 0; i--) {
-                const pt = particles[i];
-                pt.x += pt.vx;
-                pt.y += pt.vy;
-                pt.alpha -= pt.decay;
+                const part = particles[i];
+                part.x += part.vx;
+                part.y += part.vy;
+                part.alpha -= part.decay;
 
-                if (pt.alpha <= 0) {
+                if (part.alpha <= 0) {
                     particles.splice(i, 1);
-                    continue;
+                } else {
+                    ctx.save();
+                    ctx.globalAlpha = part.alpha;
+                    ctx.fillStyle = part.color;
+                    ctx.beginPath();
+                    ctx.arc(part.x, part.y, part.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
                 }
-
-                ctx.save();
-                ctx.globalAlpha = pt.alpha;
-                ctx.fillStyle = pt.color;
-                ctx.beginPath();
-                ctx.arc(pt.x, pt.y, pt.radius, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.restore();
             }
 
             requestAnimationFrame(renderArenaLoop);
         }
 
         function drawFortress(x, groundY, team) {
-            const isAlpha = team === 'alpha';
-            const baseColor = isAlpha ? '#1e3a8a' : '#881337';
-            const wallColor = isAlpha ? '#3b82f6' : '#f43f5e';
-            const glowColor = isAlpha ? '#60a5fa' : '#fb7185';
-            const towerH = 65;
-
             ctx.save();
+            const color = team === 'alpha' ? '#3b82f6' : '#ef4444';
+            const banner = team === 'alpha' ? '🔵' : '🔴';
 
-            // Main Tower Body
-            ctx.fillStyle = baseColor;
-            ctx.fillRect(x, groundY - towerH, 50, towerH);
-            ctx.strokeStyle = wallColor;
+            // Fortress Tower Body
+            ctx.fillStyle = '#1e293b';
+            ctx.strokeStyle = color;
             ctx.lineWidth = 3;
-            ctx.strokeRect(x, groundY - towerH, 50, towerH);
+            ctx.beginPath();
+            ctx.rect(x, groundY - 60, 50, 60);
+            ctx.fill();
+            ctx.stroke();
 
-            // Battlements
-            ctx.fillStyle = wallColor;
-            ctx.fillRect(x - 4, groundY - towerH - 8, 14, 8);
-            ctx.fillRect(x + 18, groundY - towerH - 8, 14, 8);
-            ctx.fillRect(x + 40, groundY - towerH - 8, 14, 8);
+            // Battlements (성곽)
+            ctx.fillStyle = color;
+            ctx.fillRect(x - 2, groundY - 72, 14, 12);
+            ctx.fillRect(x + 18, groundY - 72, 14, 12);
+            ctx.fillRect(x + 38, groundY - 72, 14, 12);
 
             // Cannon Barrel
             ctx.fillStyle = '#475569';
             ctx.save();
-            ctx.translate(x + 25, groundY - towerH + 20);
-            ctx.rotate(isAlpha ? -0.35 : 0.35);
-            ctx.fillRect(isAlpha ? 0 : -28, -5, 28, 10);
+            ctx.translate(x + 25, groundY - 35);
+            ctx.rotate(team === 'alpha' ? -Math.PI / 6 : Math.PI / 6);
+            ctx.fillRect(0, -6, team === 'alpha' ? 24 : -24, 12);
             ctx.restore();
 
-            // Flag
-            ctx.fillStyle = '#cbd5e1';
-            ctx.fillRect(x + 24, groundY - towerH - 24, 3, 18);
-            ctx.fillStyle = glowColor;
-            ctx.beginPath();
-            ctx.moveTo(x + 27, groundY - towerH - 24);
-            ctx.lineTo(x + 27 + (isAlpha ? 14 : -14), groundY - towerH - 18);
-            ctx.lineTo(x + 27, groundY - towerH - 12);
-            ctx.closePath();
-            ctx.fill();
+            // Team Icon
+            ctx.font = '16px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(banner, x + 25, groundY - 25);
 
-            // 🛡️ 요격 성공 시 활성화되는 에너지 쉴드 돔
+            // Active Shield Dome
             if (fortressShieldActive[team]) {
-                ctx.save();
-                ctx.strokeStyle = 'rgba(56, 189, 248, 0.9)';
-                ctx.fillStyle = 'rgba(56, 189, 248, 0.22)';
+                ctx.strokeStyle = '#38bdf8';
                 ctx.lineWidth = 4;
-                ctx.shadowBlur = 25;
-                ctx.shadowColor = '#38bdf8';
+                ctx.fillStyle = 'rgba(56, 189, 248, 0.25)';
                 ctx.beginPath();
-                ctx.arc(x + 25, groundY - towerH / 2, towerH * 0.72, 0, Math.PI * 2);
-                ctx.stroke();
+                ctx.arc(x + 25, groundY - 25, 55, Math.PI, 0, false);
                 ctx.fill();
-                ctx.restore();
+                ctx.stroke();
             }
 
             ctx.restore();
