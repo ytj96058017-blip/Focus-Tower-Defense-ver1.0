@@ -140,12 +140,6 @@
             <!-- 2D Canvas Defense Arena -->
             <div class="relative w-full h-56 md:h-64 bg-slate-950 rounded-2xl border-2 border-slate-700 overflow-hidden shadow-2xl">
                 <canvas id="defense-canvas" class="w-full h-full block"></canvas>
-                
-                <!-- Floating Supply Balloon Notification Button -->
-                <button id="supply-balloon-btn" onclick="openBalloonQuiz()" class="hidden absolute top-3 left-1/2 -translate-x-1/2 z-20 px-4 py-2 bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 font-impact rounded-full shadow-lg border-2 border-white animate-bounce flex items-center gap-2">
-                    <span class="text-xl">🎈</span>
-                    <span id="balloon-label">공중 보급 풍선 난입! (선착순 빙결)</span>
-                </button>
 
                 <!-- In-flight Interception Warning Banner -->
                 <div id="interception-banner" class="hidden absolute top-2 left-4 right-4 p-2.5 rounded-xl siren-alert border-2 text-center z-20 flex items-center justify-between shadow-xl">
@@ -301,29 +295,6 @@
         </div>
     </div>
 
-    <!-- MODAL 3: Air Supply Balloon Quiz -->
-    <div id="balloon-quiz-modal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-md hidden flex items-center justify-center z-50 p-4">
-        <div class="bg-indigo-950 border-2 border-yellow-400 rounded-3xl p-6 max-w-sm w-full text-center shadow-2xl">
-            <span class="text-4xl animate-bounce">🎈</span>
-            <h4 class="text-xl font-impact text-yellow-300 mt-2 mb-1">공중 보급 선착순 퀴즈</h4>
-            <p class="text-xs text-indigo-200 mb-4">정답을 먼저 맞히면 상대 팀 전원의 입력을 4초간 얼립니다!</p>
-
-            <div id="balloon-quiz-expr" class="text-3xl font-impact text-amber-300 bg-indigo-900 py-3 px-4 rounded-xl border border-yellow-500 mb-4">
-                12 - (-5) = ?
-            </div>
-
-            <div class="flex items-center gap-2">
-                <input type="number" id="balloon-quiz-input" placeholder="답 입력" 
-                       class="w-full px-4 py-3 rounded-xl bg-indigo-900 border-2 border-yellow-400 text-white font-bold text-center text-xl focus:outline-none"
-                       onkeydown="if(event.key==='Enter') submitBalloonQuiz()">
-                <button onclick="submitBalloonQuiz()" class="px-5 py-3 bg-yellow-400 hover:bg-yellow-300 text-slate-950 font-impact rounded-xl">
-                    탈취
-                </button>
-            </div>
-            <button onclick="closeBalloonModal()" class="text-xs text-indigo-300 mt-4 underline">닫기</button>
-        </div>
-    </div>
-
     <!-- Generic Notice Modal -->
     <div id="general-modal" class="fixed inset-0 bg-slate-950/80 hidden flex items-center justify-center z-50 p-4">
         <div class="bg-indigo-900 border border-indigo-600 rounded-2xl p-6 max-w-sm w-full text-center shadow-2xl">
@@ -456,8 +427,6 @@
         // Tactical & Intercept State
         let currentInterceptProblem = null;
         let smokeWipesRemaining = 5;
-        let balloonCheckInterval = null;
-        let activeBalloonData = null;
 
         function generateRandomProblem() {
             // Form: a(x + b) = c*x + d
@@ -529,11 +498,6 @@
                 lastRepair: null,
                 smokeTarget: null,
                 smokeId: 0,
-                frozenTeam: null,
-                freezeId: 0,
-                activeBalloon: null,
-                balloonSpawnCount: 0,
-                maxBalloons: 3,
                 updatedAt: Date.now()
             };
         }
@@ -609,11 +573,6 @@
             initCanvas();
             sfx.success();
 
-            // Periodic balloon spawner (3 times per game, synchronized across room)
-            if (!balloonCheckInterval) {
-                balloonCheckInterval = setInterval(checkAndManageBalloons, 5000);
-            }
-
             // Synchro timer interval
             if (!synchroTimerInterval) {
                 currentProblemStartTime = Date.now();
@@ -655,15 +614,6 @@
                 window.lastObservedSmokeId = data.smokeId;
                 activateSmokeCover();
             }
-
-            // Ice Freeze effect
-            if (data.frozenTeam === myTeam && (!window.lastObservedFreezeId || window.lastObservedFreezeId !== data.freezeId)) {
-                window.lastObservedFreezeId = data.freezeId;
-                applyFreezeEffect();
-            }
-
-            // Balloon sync
-            syncBalloonState(data.activeBalloon);
 
             // Update UI HUD
             updateHealthBars(data.alphaHp, data.betaHp);
@@ -1005,93 +955,6 @@
             if (smokeWipesRemaining <= 0) {
                 document.getElementById('smoke-overlay').classList.add('hidden');
                 sfx.success();
-            }
-        };
-
-        function applyFreezeEffect() {
-            sfx.freeze();
-            const box = document.getElementById('action-box');
-            box.classList.add('frozen-effect');
-            showStepFeedback("🥶 상대의 얼음 마법으로 4초간 입력창이 동결되었습니다!", true);
-            setTimeout(() => {
-                box.classList.remove('frozen-effect');
-            }, 4000);
-        }
-
-        function checkAndManageBalloons() {
-            if (!lastKnownRoomData) return;
-            const data = lastKnownRoomData;
-
-            // Room representative (first member) schedules balloons
-            const host = (data.alphaMembers && data.alphaMembers[0]) || (data.betaMembers && data.betaMembers[0]);
-            if (host !== currentUserName) return;
-
-            const count = data.balloonSpawnCount || 0;
-            if (count >= 3) return; // Cap at 3 per match
-
-            if (!data.activeBalloon && Math.random() < 0.45) {
-                const quiz = generateQuickMathQuiz();
-                const nextData = { ...data };
-                nextData.activeBalloon = {
-                    id: Date.now(),
-                    expr: quiz.expr,
-                    ans: quiz.ans,
-                    round: count + 1,
-                    expiresAt: Date.now() + 10000 // 10s lifetime
-                };
-                nextData.balloonSpawnCount = count + 1;
-                nextData.updatedAt = Date.now();
-                syncStateUpdate(nextData);
-            }
-        }
-
-        function syncBalloonState(balloon) {
-            const btn = document.getElementById('supply-balloon-btn');
-            const lbl = document.getElementById('balloon-label');
-            if (balloon && Date.now() < balloon.expiresAt) {
-                activeBalloonData = balloon;
-                lbl.innerText = `공중 보급 풍선 난입! (${balloon.round}/3회) [선착순 빙결]`;
-                btn.classList.remove('hidden');
-            } else {
-                btn.classList.add('hidden');
-                activeBalloonData = null;
-                if (!document.getElementById('balloon-quiz-modal').classList.contains('hidden')) {
-                    closeBalloonModal();
-                }
-            }
-        }
-
-        window.openBalloonQuiz = function() {
-            if (!activeBalloonData) return;
-            document.getElementById('supply-balloon-btn').classList.add('hidden');
-            document.getElementById('balloon-quiz-expr').innerText = activeBalloonData.expr;
-            document.getElementById('balloon-quiz-input').value = '';
-            document.getElementById('balloon-quiz-modal').classList.remove('hidden');
-        };
-
-        window.closeBalloonModal = function() {
-            document.getElementById('balloon-quiz-modal').classList.add('hidden');
-        };
-
-        window.submitBalloonQuiz = async function() {
-            const val = parseFloat(document.getElementById('balloon-quiz-input').value.trim());
-            if (activeBalloonData && val === activeBalloonData.ans) {
-                sfx.success();
-                closeBalloonModal();
-
-                const target = myTeam === 'alpha' ? 'beta' : 'alpha';
-                showStepFeedback(`🎁 [${activeBalloonData.round}/3회] 공중 보급 선점! 상대 팀을 4초간 얼렸습니다!`, false);
-
-                if (lastKnownRoomData) {
-                    const nextData = { ...lastKnownRoomData };
-                    nextData.frozenTeam = target;
-                    nextData.freezeId = Date.now();
-                    nextData.activeBalloon = null; // Instant pop
-                    nextData.updatedAt = Date.now();
-                    await syncStateUpdate(nextData);
-                }
-            } else {
-                sfx.error();
             }
         };
 
