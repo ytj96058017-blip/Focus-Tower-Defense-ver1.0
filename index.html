@@ -379,24 +379,64 @@
         let authReady = false;
         let unsubscribeDoc = null;
 
-        // Equation Bank (Linear Equations: ax + b = cx + d)
-        // step1: target x coefficient after transposition (a - c)
-        // step2: target constant on right side (d - b)
-        // answer: final x
-        const PROBLEM_BANK = [
-            { expr: "3x - 5 = x + 7", step1: 2, step2: 12, answer: 6, step1Desc: "3x - x = 2x이므로 좌변 x의 계수 2", step2Desc: "7 + 5 = 12이므로 우변 상수 12" },
-            { expr: "5x + 3 = 2x + 18", step1: 3, step2: 15, answer: 5, step1Desc: "5x - 2x = 3x이므로 x의 계수 3", step2Desc: "18 - 3 = 15이므로 우변 상수 15" },
-            { expr: "4x - 6 = 2x + 8", step1: 2, step2: 14, answer: 7, step1Desc: "4x - 2x = 2x이므로 x의 계수 2", step2Desc: "8 + 6 = 14이므로 우변 상수 14" },
-            { expr: "6x + 4 = 3x + 16", step1: 3, step2: 12, answer: 4, step1Desc: "6x - 3x = 3x이므로 x의 계수 3", step2Desc: "16 - 4 = 12이므로 우변 상수 12" },
-            { expr: "7x - 9 = 4x + 6", step1: 3, step2: 15, answer: 5, step1Desc: "7x - 4x = 3x이므로 x의 계수 3", step2Desc: "6 + 9 = 15이므로 우변 상수 15" },
-            { expr: "8x - 4 = 2x + 20", step1: 6, step2: 24, answer: 4, step1Desc: "8x - 2x = 6x이므로 x의 계수 6", step2Desc: "20 + 4 = 24이므로 우변 상수 24" }
-        ];
+        // 중학교 1학년 일차방정식 무한 랜덤 생성기 (정수 해와 깔끔한 정수 계수 보장)
+        // 유형: a(x + b) = cx + d 형태 (분배법칙 포함형)
+        function generateRandomProblem() {
+            // 해 x는 -8 ~ 8 사이 (0 제외)
+            let sol = 0;
+            while (sol === 0) {
+                sol = Math.floor(Math.random() * 17) - 8;
+            }
+
+            // 계수 a, c 결정 (a != c 이어야 일차방정식 성립)
+            const a = Math.floor(Math.random() * 4) + 2; // 2 ~ 5
+            let c = Math.floor(Math.random() * 3) + 1;  // 1 ~ 3
+            if (a === c) c = a + 1;
+
+            // 괄호 속 상수 b (-5 ~ 5, 0 제외)
+            let b = 0;
+            while (b === 0) {
+                b = Math.floor(Math.random() * 11) - 5;
+            }
+
+            // 식의 우변 상수 d 결정: a(x + b) = cx + d 가 x = sol 을 해로 갖도록 역산
+            // a*(sol + b) = c*sol + d  ==>  d = a*(sol + b) - c*sol
+            const d = a * (sol + b) - c * sol;
+
+            // 단계별 목표 정답
+            // 1단계: 분배법칙으로 전개했을 때 좌변의 상수항 (a * b)
+            const step1Ans = a * b;
+            // 2단계: x항을 좌변으로 이항했을 때 x의 계수 (a - c)
+            const step2Ans = a - c;
+            // 3단계: 상수항을 우변으로 이항하여 정리한 상수값 (d - a * b)
+            const step3Ans = d - (a * b);
+            // 4단계: 최종 해 x
+            const step4Ans = sol;
+
+            // 표현식 문자열 빌드
+            const bStr = b > 0 ? `+ ${b}` : `- ${Math.abs(b)}`;
+            const cStr = c === 1 ? 'x' : (c === -1 ? '-x' : `${c}x`);
+            const dStr = d >= 0 ? `+ ${d}` : `- ${Math.abs(d)}`;
+            const expr = `${a}(x ${bStr}) = ${cStr} ${dStr}`;
+
+            return {
+                expr: expr,
+                a: a,
+                b: b,
+                c: c,
+                d: d,
+                step1: step1Ans,
+                step2: step2Ans,
+                step3: step3Ans,
+                answer: step4Ans
+            };
+        }
 
         // Client State
         let myNick = '';
         let currentRoom = '';
         let myTeam = ''; // 'alpha' or 'beta'
-        let myRoleIndex = 0; // 0, 1, 2 depending on team size
+        let myRoleIndex = 0; // 0, 1, 2, 3
         let lastKnownRoomData = null;
 
         // Multi-tab BroadcastChannel for bulletproof zero-delay local multi-tab testing
@@ -519,10 +559,10 @@
                 betaHp: 100,
                 alphaMembers: [],
                 betaMembers: [],
-                alphaStage: 0, // 0: 이항, 1: 정리, 2: 최종해
+                alphaStage: 0, // 0: 전개, 1: 미지수이항, 2: 상수정리, 3: 최종해
                 betaStage: 0,
-                alphaProbIndex: 0,
-                betaProbIndex: 0,
+                alphaProblem: generateRandomProblem(),
+                betaProblem: generateRandomProblem(),
                 lastAttack: null,
                 updatedAt: Date.now()
             };
@@ -578,10 +618,11 @@
             const teamSize = Math.max(1, teamMembers.length);
 
             // Dynamic Role mapping:
-            // If 1 member: handles all 3 steps (0, 1, 2)
-            // If 2 members: Member 0 => Step 0 (이항); Member 1 => Step 1 & 2 (정리 및 최종해)
-            // If 3 members: Member 0 => Step 0; Member 1 => Step 1; Member 2 => Step 2
-            // If 4+ members: Member 0 => Step 0; Member 1 => Step 1; Member 2 => Step 2; Member 3+ => Support / Boost
+            // Dynamic Role mapping based on Team Member Count:
+            // 1인: 0, 1, 2, 3단계 모두 혼자 해결
+            // 2인: 대원0 => 0, 1단계 / 대원1 => 2, 3단계
+            // 3인: 대원0 => 0단계 / 대원1 => 1, 2단계 / 대원2 => 3단계
+            // 4인: 대원0 => 0단계 / 대원1 => 1단계 / 대원2 => 2단계 / 대원3 => 3단계
             myRoleIndex = myPos >= 0 ? myPos : 0;
 
             // Update Team Roster UI with roles
@@ -590,13 +631,12 @@
 
             // Determine My Team's Current Stage & Problem
             const currentStage = myTeam === 'alpha' ? (data.alphaStage || 0) : (data.betaStage || 0);
-            const probIdx = (myTeam === 'alpha' ? data.alphaProbIndex : data.betaProbIndex) || 0;
-            const currentProb = PROBLEM_BANK[probIdx % PROBLEM_BANK.length];
+            const currentProb = (myTeam === 'alpha' ? data.alphaProblem : data.betaProblem) || generateRandomProblem();
 
             // Render current problem
             document.getElementById('problem-expr').innerText = currentProb.expr;
 
-            // Update 3-step pipeline tiles
+            // Update 4-step pipeline tiles
             updatePipelineTiles(currentStage, teamMembers, teamSize);
 
             // Check if it's My Turn!
@@ -639,30 +679,41 @@
         function checkIsMyTurn(stage, pos, size) {
             if (size <= 1) return true; // Solo player handles everything
             if (size === 2) {
-                if (stage === 0) return pos === 0;
-                if (stage === 1 || stage === 2) return pos === 1;
+                if (stage === 0 || stage === 1) return pos === 0;
+                return pos === 1;
             }
             if (size === 3) {
-                return pos === stage;
+                if (stage === 0) return pos === 0;
+                if (stage === 1 || stage === 2) return pos === 1;
+                return pos === 2;
             }
             if (size >= 4) {
-                if (stage < 3) return pos === stage;
+                if (stage < 4) return pos === stage;
                 return true;
             }
             return true;
         }
 
         function getRoleTitle(pos, size) {
-            if (size <= 1) return "전담 사령관 (전 단계 수행)";
+            if (size <= 1) return "전담 사령관 (1~4단계 전체 지휘)";
             if (size === 2) {
-                return pos === 0 ? "역할 ①: 이항 파트 전담" : "역할 ②: 동류항 정리 및 최종 해 전담";
+                return pos === 0 ? "역할 ①: 괄호 전개 및 이항 전담" : "역할 ②: 동류항 정리 및 최종 해 발사 전담";
             }
             if (size === 3) {
-                const titles = ["역할 ①: 이항 파트 담당", "역할 ②: 상수항 정리 담당", "역할 ③: 최종 해(x) 포격 담당"];
+                const titles = [
+                    "역할 ①: 분배법칙 전개 담당", 
+                    "역할 ②: 이항 및 동류항 계산 담당", 
+                    "역할 ③: 최종 해(x) 포격 담당"
+                ];
                 return titles[pos] || "보조 포병";
             }
-            const titles = ["역할 ①: 이항 파트 담당", "역할 ②: 상수항 정리 담당", "역할 ③: 최종 해(x) 포격 담당", "역할 ④: 특수 전술 화력 부스터"];
-            return titles[pos] || "지원 포병";
+            const titles = [
+                "역할 ①: 분배법칙 괄호 전개 담당",
+                "역할 ②: x항 좌변 이항 계수 담당",
+                "역할 ③: 상수항 우변 정리 담당",
+                "역할 ④: 최종 해(x) 계산 및 포탄 발사 담당"
+            ];
+            return titles[pos] || "특수 화력 지원 대원";
         }
 
         function renderMembersBadge(containerId, members, activeStage) {
@@ -688,19 +739,25 @@
         }
 
         function updatePipelineTiles(currentStage, members, size) {
-            const stages = [1, 2, 3];
+            const stages = [1, 2, 3, 4];
             stages.forEach(st => {
                 const idx = st - 1;
                 const tile = document.getElementById(`step-tile-${st}`);
                 const check = document.getElementById(`step-tile-${st}-check`);
                 const holder = document.getElementById(`step-tile-${st}-holder`);
 
+                if (!tile) return;
+
                 // Compute who is handling this step
                 let holderName = "대기중";
                 if (size === 1) {
                     holderName = members[0] || "대원 1";
                 } else if (size === 2) {
-                    holderName = idx === 0 ? (members[0] || "대원 1") : (members[1] || "대원 2");
+                    holderName = (idx === 0 || idx === 1) ? (members[0] || "대원 1") : (members[1] || "대원 2");
+                } else if (size === 3) {
+                    if (idx === 0) holderName = members[0] || "대원 1";
+                    else if (idx === 1 || idx === 2) holderName = members[1] || "대원 2";
+                    else holderName = members[2] || "대원 3";
                 } else {
                     holderName = members[idx] || `대원 ${st}`;
                 }
@@ -708,13 +765,13 @@
                 holder.innerText = `담당: ${holderName}`;
 
                 if (idx < currentStage) {
-                    tile.className = "p-3 rounded-xl border bg-emerald-950/50 border-emerald-500/70 shadow-sm";
+                    tile.className = "p-2.5 rounded-xl border bg-emerald-950/50 border-emerald-500/70 shadow-sm";
                     check.innerText = "✅ 완료";
                 } else if (idx === currentStage) {
-                    tile.className = "p-3 rounded-xl border bg-yellow-500/20 border-yellow-400 turn-active";
+                    tile.className = "p-2.5 rounded-xl border bg-yellow-500/20 border-yellow-400 turn-active";
                     check.innerText = "⚡ 진행중";
                 } else {
-                    tile.className = "p-3 rounded-xl border bg-slate-900/70 border-indigo-900/60 opacity-60";
+                    tile.className = "p-2.5 rounded-xl border bg-slate-900/70 border-indigo-900/60 opacity-60";
                     check.innerText = "⚪ 대기";
                 }
             });
@@ -727,13 +784,15 @@
             const instruction = document.getElementById('step-instruction');
             const waitMsg = document.getElementById('turn-wait-msg');
 
-            // Detailed instructions for each step of middle school 1st grade linear equations
+            // 순수 수학적 지시어 제공 (정답 누출 힌트 완전 제거)
             if (stage === 0) {
-                instruction.innerHTML = `【1단계: 이항】 x항을 좌변으로 모았을 때 <b>x의 계수</b>를 입력하세요! <span class="text-yellow-400">(${currentProb.step1Desc})</span>`;
+                instruction.innerHTML = `【1단계: 괄호 풀기】 분배법칙을 적용하여 괄호를 전개했을 때, 좌변의 <b>상수값</b>을 계산하여 입력하세요!`;
             } else if (stage === 1) {
-                instruction.innerHTML = `【2단계: 동류항 정리】 상수항을 우변으로 모아 계산한 <b>상수값</b>을 입력하세요! <span class="text-yellow-400">(${currentProb.step2Desc})</span>`;
+                instruction.innerHTML = `【2단계: x항 이항】 우변의 x항을 좌변으로 이항했을 때, 좌변의 <b>x의 계수</b>를 입력하세요!`;
             } else if (stage === 2) {
-                instruction.innerHTML = `【3단계: 최종 해(x)】 양변을 계수로 나누어 <b>x의 해</b>를 구하고 포탄을 발사하세요!`;
+                instruction.innerHTML = `【3단계: 동류항 정리】 좌변의 상수항을 우변으로 이항하여 계산한 우변의 <b>상수값</b>을 입력하세요!`;
+            } else if (stage === 3) {
+                instruction.innerHTML = `【4단계: 최종 해(x)】 양변을 계수로 나누어 <b>x의 해</b>를 구하고 포탄을 발사하세요!`;
             }
 
             if (isMyTurn) {
@@ -752,9 +811,17 @@
                 
                 // Determine current teammate name
                 const teamSize = members.length;
-                let activeTeammate = members[stage] || "팀원";
-                if (teamSize === 2 && (stage === 1 || stage === 2)) activeTeammate = members[1] || "팀원";
-                waitMsg.innerText = `현재 [${activeTeammate}] 대원의 순서입니다! 함께 화면을 보고 계산을 도와주세요!`;
+                let activeTeammate = "팀원";
+                if (teamSize === 2) {
+                    activeTeammate = (stage === 0 || stage === 1) ? (members[0] || "팀원") : (members[1] || "팀원");
+                } else if (teamSize === 3) {
+                    if (stage === 0) activeTeammate = members[0] || "팀원";
+                    else if (stage === 1 || stage === 2) activeTeammate = members[1] || "팀원";
+                    else activeTeammate = members[2] || "팀원";
+                } else {
+                    activeTeammate = members[stage] || "팀원";
+                }
+                waitMsg.innerText = `현재 [${activeTeammate}] 대원의 순서입니다! 화면을 함께 보며 계산을 도와주세요!`;
             }
         }
 
@@ -771,38 +838,41 @@
             if (!lastKnownRoomData) return;
 
             const currentStage = myTeam === 'alpha' ? (lastKnownRoomData.alphaStage || 0) : (lastKnownRoomData.betaStage || 0);
-            const probIdx = (myTeam === 'alpha' ? lastKnownRoomData.alphaProbIndex : lastKnownRoomData.betaProbIndex) || 0;
-            const currentProb = PROBLEM_BANK[probIdx % PROBLEM_BANK.length];
+            const currentProb = (myTeam === 'alpha' ? lastKnownRoomData.alphaProblem : lastKnownRoomData.betaProblem) || generateRandomProblem();
 
-            // Verify Step Answer
+            // 단계별 목표 정답 검증
             let expectedVal = 0;
             if (currentStage === 0) expectedVal = currentProb.step1;
             else if (currentStage === 1) expectedVal = currentProb.step2;
-            else if (currentStage === 2) expectedVal = currentProb.answer;
+            else if (currentStage === 2) expectedVal = currentProb.step3;
+            else if (currentStage === 3) expectedVal = currentProb.answer;
 
             if (val === expectedVal) {
                 input.value = '';
                 sfx.success();
-                showStepFeedback(`✨ ${currentStage + 1}단계 정답 성공! 다음 단계로 이양합니다!`, false);
 
                 // Clone state to mutate
                 const nextData = { ...lastKnownRoomData };
                 let nextStage = currentStage + 1;
                 let attackPayload = null;
 
-                if (nextStage > 2) {
-                    // Full Equation Solved -> Fire Cannon and Damage Opponent Fort!
+                if (nextStage > 3) {
+                    // 4단계 모두 완료 -> 포탄 발사 및 상대 요새 피해, 새로운 랜덤 문제 출제!
                     nextStage = 0;
+                    const newProb = generateRandomProblem();
+
                     if (myTeam === 'alpha') {
-                        nextData.alphaProbIndex = (nextData.alphaProbIndex || 0) + 1;
+                        nextData.alphaProblem = newProb;
                         nextData.betaHp = Math.max(0, nextData.betaHp - 25);
                         attackPayload = { fromTeam: 'alpha', toTeam: 'beta', dmg: 25, id: Date.now() + Math.random() };
                     } else {
-                        nextData.betaProbIndex = (nextData.betaProbIndex || 0) + 1;
+                        nextData.betaProblem = newProb;
                         nextData.alphaHp = Math.max(0, nextData.alphaHp - 25);
                         attackPayload = { fromTeam: 'beta', toTeam: 'alpha', dmg: 25, id: Date.now() + Math.random() };
                     }
-                    showStepFeedback(`🎯 방정식 완전 해결! 대포가 발사되어 상대 요새를 강타했습니다! (-25 HP)`, false);
+                    showStepFeedback(`🎯 일차방정식 완전 정복! 대포가 발사되어 적 성채를 강타했습니다! (-25 HP)`, false);
+                } else {
+                    showStepFeedback(`✨ ${currentStage + 1}단계 통과! 다음 대원에게 바통을 넘깁니다!`, false);
                 }
 
                 if (myTeam === 'alpha') {
@@ -818,7 +888,7 @@
 
             } else {
                 sfx.error();
-                showStepFeedback(`❌ 계산이 맞지 않습니다! 다시 풀어보세요.`, true);
+                showStepFeedback(`❌ 계산이 맞지 않습니다! 부호와 식을 다시 확인해보세요.`, true);
             }
         };
 
@@ -889,6 +959,8 @@
                 betaHp: 100,
                 alphaStage: 0,
                 betaStage: 0,
+                alphaProblem: generateRandomProblem(),
+                betaProblem: generateRandomProblem(),
                 lastAttack: null,
                 updatedAt: Date.now()
             };
