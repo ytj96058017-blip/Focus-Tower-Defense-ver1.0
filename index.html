@@ -448,76 +448,32 @@
         }
 
         /* 
-           [핵심] 한 문제 안에서는 대원들이 각 단계를 번갈아 가며 해결하고,
-           매 문제(작전 #1, #2, ...)마다 순서가 교대되어 서로 다른 학생이 포(4단계)를 발사하도록 설계
+           [핵심 일원화 공식]
+           - 한 문제 안에서는 대원들이 1단계씩 번갈아 가며 협동
+           - 문제가 바뀔 때마다(작전 #1 -> #2 -> ...) 순서가 한 칸씩 회전하여
+             매번 다른 대원이 4단계(최종 해 & 포 발사)를 전담하도록 설계
         */
-        function generateRoleOrder(teamSize, problemCount = 1, prevLastActor = -1) {
-            if (teamSize <= 1) return [0, 0, 0, 0];
-
-            const shift = (Math.max(1, problemCount) - 1) % teamSize;
-
-            if (teamSize === 2) {
-                // 2인 모둠: 한 문제 안에서 1번-2번 대원이 철저히 교대!
-                // 작전 #1 (shift=0): [0, 1, 0, 1] -> 2번 대원이 4단계 포 발사
-                // 작전 #2 (shift=1): [1, 0, 1, 0] -> 1번 대원이 4단계 포 발사
-                return (shift === 0) ? [0, 1, 0, 1] : [1, 0, 1, 0];
-            } else if (teamSize === 3) {
-                // 3인 모둠: 3명이 한 문제에서 1단계씩 맡되, 4단계 포 발사자가 매번 1번->2번->3번 순으로 교대
-                const shooter = shift;
-                const p1 = (shift + 1) % 3;
-                const p2 = (shift + 2) % 3;
-                return [p1, p2, p1, shooter];
-            } else {
-                // 4인 모둠: 4명이 1인 1역할을 맡으며, 매 문제마다 시작 주자와 포 발사자가 한 칸씩 교대
-                const order = [];
-                for (let s = 0; s < 4; s++) {
-                    order.push((s + shift) % teamSize);
-                }
-                // 직전 문제의 포 발사자와 겹치지 않도록 방지
-                if (order[3] === prevLastActor && teamSize > 1) {
-                    const temp = order[0];
-                    order[0] = order[3];
-                    order[3] = temp;
-                }
-                return order;
-            }
-        }
-
-        // 특정 단계의 실제 담당자 인덱스를 안전하게 계산
-        function getStageActorIndex(stage, teamSize, problemCount, roleOrder) {
+        function getStageActorIndex(stage, teamSize, problemCount = 1) {
             if (teamSize <= 1) return 0;
-            if (Array.isArray(roleOrder) && roleOrder.length === 4) {
-                const unique = new Set(roleOrder.map(r => r % teamSize));
-                if (unique.size > 1) {
-                    return roleOrder[stage] % teamSize;
-                }
-            }
-            const fallbackOrder = generateRoleOrder(teamSize, problemCount);
-            return fallbackOrder[stage] % teamSize;
+            const shift = (Math.max(1, problemCount) - 1) % teamSize;
+            return (stage + shift) % teamSize;
         }
 
-        function getRoleDescription(memberIndex, teamSize, roleOrder, problemCount = 1) {
+        function getRoleDescription(memberIndex, teamSize, problemCount = 1) {
             if (teamSize <= 1) return "총괄 사령관 (전 단계 단독 수행)";
             const stageNames = [
                 "① 괄호 전개",
-                "② 미지수 좌변 이항",
-                "③ 상수항 우변 정리",
-                "④ 최종 해 & 포탄 발사 🚀"
+                "② 좌변 이항",
+                "③ 우변 정리",
+                "④ 해 도출 & 포탄 발사 🚀"
             ];
             const myAssignedStages = [];
-            const safeOrder = (Array.isArray(roleOrder) && roleOrder.length === 4) 
-                ? roleOrder 
-                : generateRoleOrder(teamSize, problemCount);
-
             for (let s = 0; s < 4; s++) {
-                if ((safeOrder[s] % teamSize) === memberIndex) {
+                if (getStageActorIndex(s, teamSize, problemCount) === memberIndex) {
                     myAssignedStages.push(stageNames[s]);
                 }
             }
-            if (myAssignedStages.length === 0) {
-                return `${memberIndex + 1}번 대원 [지원 사격]`;
-            }
-            return `${memberIndex + 1}번 대원 [${myAssignedStages.join(' & ')}]`;
+            return `${memberIndex + 1}번 대원 [${myAssignedStages.join(' + ')}]`;
         }
 
         function generateRandomProblem() {
@@ -586,8 +542,6 @@
                 betaStage: 0,
                 alphaProblem: generateRandomProblem(),
                 betaProblem: generateRandomProblem(),
-                alphaRoleOrder: generateRoleOrder(1),
-                betaRoleOrder: generateRoleOrder(1),
                 alphaProblemCount: 1,
                 betaProblemCount: 1,
                 lastAttack: null,
@@ -639,10 +593,8 @@
                                 const updated = { ...lastKnownRoomData };
                                 if (msg.team === 'alpha') {
                                     updated.alphaMembers = mergeMembers(updated.alphaMembers, [msg.member]);
-                                    updated.alphaRoleOrder = generateRoleOrder(updated.alphaMembers.length, updated.alphaProblemCount || 1);
                                 } else {
                                     updated.betaMembers = mergeMembers(updated.betaMembers, [msg.member]);
-                                    updated.betaRoleOrder = generateRoleOrder(updated.betaMembers.length, updated.betaProblemCount || 1);
                                 }
                                 updated.updatedAt = Date.now();
                                 applyRoomState(updated, true); // Re-broadcast so the newcomer receives the merged list
@@ -668,10 +620,8 @@
 
                     if (team === 'alpha') {
                         initialData.alphaMembers = mergeMembers(initialData.alphaMembers, [myMemberObj]);
-                        initialData.alphaRoleOrder = generateRoleOrder(initialData.alphaMembers.length, initialData.alphaProblemCount || 1);
                     } else {
                         initialData.betaMembers = mergeMembers(initialData.betaMembers, [myMemberObj]);
-                        initialData.betaRoleOrder = generateRoleOrder(initialData.betaMembers.length, initialData.betaProblemCount || 1);
                     }
 
                     initialData.updatedAt = Date.now();
@@ -688,10 +638,8 @@
                 initialData = createInitialRoomData();
                 if (team === 'alpha') {
                     initialData.alphaMembers = [myMemberObj];
-                    initialData.alphaRoleOrder = generateRoleOrder(1, 1);
                 } else {
                     initialData.betaMembers = [myMemberObj];
-                    initialData.betaRoleOrder = generateRoleOrder(1, 1);
                 }
 
                 if (bc) {
@@ -816,7 +764,6 @@
             const currentStage = team === 'alpha' ? (data.alphaStage || 0) : (data.betaStage || 0);
             const currentProb = team === 'alpha' ? data.alphaProblem : data.betaProblem;
             const problemCount = team === 'alpha' ? (data.alphaProblemCount || 1) : (data.betaProblemCount || 1);
-            const currentRoleOrder = team === 'alpha' ? data.alphaRoleOrder : data.betaRoleOrder;
 
             if (!currentProb) return;
 
@@ -836,8 +783,8 @@
             const teamSize = Math.max(1, myMembers.length);
             const myIndex = myMembers.findIndex(m => m.name === currentUserName);
             
-            // 이번 문제의 동적 순환 순서에 따라 현재 단계의 담당 대원 결정
-            const activeMemberIndex = getStageActorIndex(currentStage, teamSize, problemCount, currentRoleOrder);
+            // 이번 문제의 동적 순환 공식에 따라 현재 단계의 담당 대원 결정
+            const activeMemberIndex = getStageActorIndex(currentStage, teamSize, problemCount);
             const activeMemberObj = myMembers[activeMemberIndex];
             const activeMemberName = activeMemberObj ? activeMemberObj.name : `${activeMemberIndex + 1}번 대원`;
 
@@ -850,15 +797,15 @@
             }
             prevWasMyTurn = isMyTurn;
 
-            // My Assigned Role Label (이번 작전에서 내가 맡은 역할 실시간 갱신)
+            // My Assigned Role Label (더 이상 '지원 사격' 같은 오해성 텍스트가 뜨지 않음)
             const roleBadge = document.getElementById('my-role-badge');
             if (myIndex !== -1) {
-                roleBadge.innerText = `이번 작전 내 역할: ${getRoleDescription(myIndex, teamSize, currentRoleOrder, problemCount)}`;
+                roleBadge.innerText = `이번 작전 내 역할: ${getRoleDescription(myIndex, teamSize, problemCount)}`;
                 roleBadge.className = isMyTurn 
                     ? 'text-xs px-3.5 py-1.5 bg-yellow-400 text-slate-950 border-2 border-yellow-300 rounded-full font-impact animate-pulse'
                     : 'text-xs px-3.5 py-1.5 bg-yellow-500/20 text-yellow-300 border border-yellow-500/40 rounded-full font-bold';
             } else {
-                roleBadge.innerText = "관전 및 작전 지원 중";
+                roleBadge.innerText = "관전 중";
             }
 
             // Step Instruction Text
@@ -905,7 +852,7 @@
 
             for (let s = 0; s < 4; s++) {
                 const card = document.getElementById(`stage-card-${s}`);
-                const stageActorIdx = getStageActorIndex(s, teamSize, problemCount, currentRoleOrder);
+                const stageActorIdx = getStageActorIndex(s, teamSize, problemCount);
                 const stageActorObj = myMembers[stageActorIdx];
                 const stageActorName = stageActorObj ? stageActorObj.name : `${stageActorIdx + 1}번 대원`;
                 const isThisStageMine = (myIndex === stageActorIdx);
@@ -1072,23 +1019,15 @@
                 showStepFeedback(`🛠️ 수리 드론 출현! 아군 성채를 직접 나노 수리 중입니다! (+${heal} HP)`, false);
             }
 
-            // 문제 및 단계 리셋 & 새 문제 출제 시 직전 포 발사자와 다른 대원이 포를 쏘도록 순서 재배치!
+            // 문제 번호(problemCount)를 1 올리고 단계 리셋 -> 다음 작전에서는 시작 주자와 포 발사자가 자동으로 교대 회전!
             if (myTeam === 'alpha') {
-                const teamSize = Math.max(1, (nextData.alphaMembers || []).length);
-                const newCount = (nextData.alphaProblemCount || 1) + 1;
-                const prevLast = (nextData.alphaRoleOrder && nextData.alphaRoleOrder[3] !== undefined) ? nextData.alphaRoleOrder[3] : -1;
                 nextData.alphaProblem = newProb;
                 nextData.alphaStage = 0;
-                nextData.alphaProblemCount = newCount;
-                nextData.alphaRoleOrder = generateRoleOrder(teamSize, newCount, prevLast);
+                nextData.alphaProblemCount = (nextData.alphaProblemCount || 1) + 1;
             } else {
-                const teamSize = Math.max(1, (nextData.betaMembers || []).length);
-                const newCount = (nextData.betaProblemCount || 1) + 1;
-                const prevLast = (nextData.betaRoleOrder && nextData.betaRoleOrder[3] !== undefined) ? nextData.betaRoleOrder[3] : -1;
                 nextData.betaProblem = newProb;
                 nextData.betaStage = 0;
-                nextData.betaProblemCount = newCount;
-                nextData.betaRoleOrder = generateRoleOrder(teamSize, newCount, prevLast);
+                nextData.betaProblemCount = (nextData.betaProblemCount || 1) + 1;
             }
 
             if (attackPayload) nextData.lastAttack = attackPayload;
