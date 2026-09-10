@@ -423,10 +423,59 @@
         let mistakesOnCurrentProblem = 0;
         let synchroTimerInterval = null;
         let isPerfectSynchroActive = false;
+        let prevWasMyTurn = false;
 
         // Tactical & Intercept State
         let currentInterceptProblem = null;
         let smokeWipesRemaining = 5;
+
+        // Deterministic member list merger and ordering
+        function mergeMembers(listA = [], listB = []) {
+            const map = new Map();
+            [...listA, ...listB].forEach(item => {
+                if (!item) return;
+                const obj = typeof item === 'string' 
+                    ? { name: item, joinedAt: Date.now() } 
+                    : { name: item.name, joinedAt: item.joinedAt || Date.now() };
+                if (!map.has(obj.name) || map.get(obj.name).joinedAt > obj.joinedAt) {
+                    map.set(obj.name, obj);
+                }
+            });
+            // Strictly sort by join timestamp, then name tie-breaker
+            return Array.from(map.values()).sort((a, b) => 
+                a.joinedAt !== b.joinedAt ? a.joinedAt - b.joinedAt : a.name.localeCompare(b.name)
+            );
+        }
+
+        function getActorIndexForStage(stage, teamSize) {
+            if (teamSize <= 1) return 0;
+            if (teamSize === 2) {
+                // 1번 대원: 1단계(괄호) & 3단계(상수)
+                // 2번 대원: 2단계(이항) & 4단계(해 도출)
+                return stage % 2;
+            }
+            if (teamSize === 3) {
+                // 1번: 1단계 & 4단계, 2번: 2단계, 3번: 3단계
+                return stage % 3;
+            }
+            return stage % teamSize;
+        }
+
+        function getRoleDescription(memberIndex, teamSize) {
+            if (teamSize <= 1) return "총괄 사령관 (전 단계 단독 수행)";
+            if (teamSize === 2) {
+                return memberIndex === 0 
+                    ? "1번 대원 👑 [① 괄호 전개 & ③ 우변 정리]" 
+                    : "2번 대원 🎯 [② 미지수 이항 & ④ 최종 해 발사]";
+            }
+            if (teamSize === 3) {
+                if (memberIndex === 0) return "1번 대원 👑 [① 괄호 전개 & ④ 최종 해]";
+                if (memberIndex === 1) return "2번 대원 ⚔️ [② 미지수 좌변 이항]";
+                return "3번 대원 🛡️ [③ 상수항 우변 정리]";
+            }
+            const roleNames = ["① 괄호 풀기 전담", "② 미지수 이항 전담", "③ 상수항 정리 전담", "④ 최종 해 도출 & 발사"];
+            return `${memberIndex + 1}번 대원 [${roleNames[memberIndex % 4]}]`;
+        }
 
         function generateRandomProblem() {
             // Form: a(x + b) = c*x + d
@@ -519,6 +568,8 @@
             currentRoomCode = code;
             myTeam = team;
 
+            const myMemberObj = { name: currentUserName, joinedAt: Date.now() };
+
             document.getElementById('lobby-status').innerText = "전장에 접속하여 팀원을 탐색 중...";
 
             // Setup multi-tab BroadcastChannel for zero-delay cross-tab / local simulation
@@ -533,20 +584,19 @@
                         if (msg.type === 'SYNC_STATE') {
                             applyRoomState(msg.payload, false);
                         } else if (msg.type === 'REQUEST_STATE') {
-                            // 기존 방 대원이 새로운 참가자에게 현재 방 데이터를 전송
                             if (lastKnownRoomData) {
                                 bc.postMessage({ type: 'SYNC_STATE', payload: lastKnownRoomData });
                             }
                         } else if (msg.type === 'MEMBER_JOIN') {
-                            // 신규 참가자 합류 처리
                             if (lastKnownRoomData) {
                                 const updated = { ...lastKnownRoomData };
-                                updated.alphaMembers = (updated.alphaMembers || []).filter(m => m !== msg.name);
-                                updated.betaMembers = (updated.betaMembers || []).filter(m => m !== msg.name);
-                                if (msg.team === 'alpha') updated.alphaMembers.push(msg.name);
-                                else updated.betaMembers.push(msg.name);
+                                if (msg.team === 'alpha') {
+                                    updated.alphaMembers = mergeMembers(updated.alphaMembers, [msg.member]);
+                                } else {
+                                    updated.betaMembers = mergeMembers(updated.betaMembers, [msg.member]);
+                                }
                                 updated.updatedAt = Date.now();
-                                applyRoomState(updated, false);
+                                applyRoomState(updated, true); // Re-broadcast so the newcomer receives the merged list
                             }
                         }
                     }
@@ -567,11 +617,11 @@
                         initialData = createInitialRoomData();
                     }
 
-                    initialData.alphaMembers = (initialData.alphaMembers || []).filter(m => m !== currentUserName);
-                    initialData.betaMembers = (initialData.betaMembers || []).filter(m => m !== currentUserName);
-
-                    if (team === 'alpha') initialData.alphaMembers.push(currentUserName);
-                    else initialData.betaMembers.push(currentUserName);
+                    if (team === 'alpha') {
+                        initialData.alphaMembers = mergeMembers(initialData.alphaMembers, [myMemberObj]);
+                    } else {
+                        initialData.betaMembers = mergeMembers(initialData.betaMembers, [myMemberObj]);
+                    }
 
                     initialData.updatedAt = Date.now();
 
@@ -585,15 +635,12 @@
             // 2. 만약 Firestore가 꺼져 있거나 연결 전이면 로컬 피어에게 방 상태 질의
             if (!initialData) {
                 initialData = createInitialRoomData();
-                initialData.alphaMembers = (initialData.alphaMembers || []).filter(m => m !== currentUserName);
-                initialData.betaMembers = (initialData.betaMembers || []).filter(m => m !== currentUserName);
-                if (team === 'alpha') initialData.alphaMembers.push(currentUserName);
-                else initialData.betaMembers.push(currentUserName);
+                if (team === 'alpha') initialData.alphaMembers = [myMemberObj];
+                else initialData.betaMembers = [myMemberObj];
 
-                // BroadcastChannel을 통해 방에 이미 접속한 다른 대원에게 현재 정보 요청
                 if (bc) {
                     bc.postMessage({ type: 'REQUEST_STATE' });
-                    bc.postMessage({ type: 'MEMBER_JOIN', name: currentUserName, team: myTeam });
+                    bc.postMessage({ type: 'MEMBER_JOIN', member: myMemberObj, team: myTeam });
                 }
             }
 
@@ -624,12 +671,13 @@
         function applyRoomState(data, broadcastEcho = false) {
             if (!data) return;
 
-            // 로컬에 이미 알고 있는 팀원 목록이 있다면 신규 데이터와 합집합 병합 (다른 탭 덮어쓰기 방지)
+            // Deterministic merge with previously known members
             if (lastKnownRoomData) {
-                const combinedAlpha = Array.from(new Set([...(lastKnownRoomData.alphaMembers || []), ...(data.alphaMembers || [])]));
-                const combinedBeta = Array.from(new Set([...(lastKnownRoomData.betaMembers || []), ...(data.betaMembers || [])]));
-                data.alphaMembers = combinedAlpha;
-                data.betaMembers = combinedBeta;
+                data.alphaMembers = mergeMembers(lastKnownRoomData.alphaMembers, data.alphaMembers);
+                data.betaMembers = mergeMembers(lastKnownRoomData.betaMembers, data.betaMembers);
+            } else {
+                data.alphaMembers = mergeMembers([], data.alphaMembers);
+                data.betaMembers = mergeMembers([], data.betaMembers);
             }
 
             lastKnownRoomData = data;
@@ -660,8 +708,8 @@
             // Update UI HUD
             updateHealthBars(data.alphaHp, data.betaHp);
 
-            const aMembers = data.alphaMembers || [];
-            const bMembers = data.betaMembers || [];
+            const aMembers = (data.alphaMembers || []).map(m => m.name || m);
+            const bMembers = (data.betaMembers || []).map(m => m.name || m);
             document.getElementById('alpha-members').innerText = `대원(${aMembers.length}명): ${aMembers.join(', ') || '대기 중'}`;
             document.getElementById('beta-members').innerText = `대원(${bMembers.length}명): ${bMembers.join(', ') || '대기 중'}`;
 
@@ -706,7 +754,9 @@
 
         function updatePipelineUI(data) {
             const team = myTeam;
-            const myMembers = team === 'alpha' ? (data.alphaMembers || []) : (data.betaMembers || []);
+            const myRawMembers = team === 'alpha' ? (data.alphaMembers || []) : (data.betaMembers || []);
+            // Normalize member objects with stable order
+            const myMembers = mergeMembers([], myRawMembers);
             const currentStage = team === 'alpha' ? (data.alphaStage || 0) : (data.betaStage || 0);
             const currentProb = team === 'alpha' ? data.alphaProblem : data.betaProblem;
 
@@ -724,42 +774,38 @@
                 teamBadge.className = 'text-xs px-3.5 py-1.5 bg-red-500/25 text-red-300 border border-red-400 rounded-full font-bold';
             }
 
-            // [핵심 인터락] 1~4명 인원수에 따른 정확한 차례 계산
+            // 정확한 순번 계산 (시간순 정렬에 따른 불변 인덱스)
             const teamSize = Math.max(1, myMembers.length);
-            const myIndex = myMembers.indexOf(currentUserName);
+            const myIndex = myMembers.findIndex(m => m.name === currentUserName);
             
             // 현재 단계(0~3)를 계산해야 하는 대원의 인덱스
-            const activeMemberIndex = currentStage % teamSize;
-            const activeMemberName = myMembers[activeMemberIndex] || '아군 대원';
+            const activeMemberIndex = getActorIndexForStage(currentStage, teamSize);
+            const activeMemberObj = myMembers[activeMemberIndex];
+            const activeMemberName = activeMemberObj ? activeMemberObj.name : `${activeMemberIndex + 1}번 대원`;
 
-            // 오직 내 인덱스와 현재 순번이 일치할 때만 입력 가능 (팀에 등록되지 않았거나 다른 사람 차례면 잠금)
+            // 오직 내 인덱스와 현재 단계 담당 인덱스가 일치할 때만 입력 가능
             const isMyTurn = (myIndex !== -1) && (myIndex === activeMemberIndex);
+
+            // 차례 전환 알림 효과음
+            if (isMyTurn && !prevWasMyTurn) {
+                sfx.synchro();
+            }
+            prevWasMyTurn = isMyTurn;
 
             // My Assigned Role Label
             const roleBadge = document.getElementById('my-role-badge');
-            const roleDescriptions = [
-                "① 괄호 전개 파트",
-                "② 미지수 좌변 이항 파트",
-                "③ 상수항 우변 정리 파트",
-                "④ 최종 해 도출 & 발사 파트"
-            ];
-
             if (myIndex !== -1) {
-                if (teamSize === 1) {
-                    roleBadge.innerText = "내 역할: 총괄 사령관 (전 단계 단독 수행)";
-                } else if (teamSize === 2) {
-                    roleBadge.innerText = myIndex === 0 ? "내 역할: ① 괄호 전개 & ③ 우변 정리" : "내 역할: ② 미지수 이항 & ④ 최종 해 발사";
-                } else if (teamSize === 3) {
-                    roleBadge.innerText = `내 역할: ${roleDescriptions[myIndex]} (순환 참여)`;
-                } else {
-                    roleBadge.innerText = `내 역할: ${roleDescriptions[myIndex % 4]} 전담 대원`;
-                }
+                roleBadge.innerText = `내 역할: ${getRoleDescription(myIndex, teamSize)}`;
+                roleBadge.className = isMyTurn 
+                    ? 'text-xs px-3.5 py-1.5 bg-yellow-400 text-slate-950 border-2 border-yellow-300 rounded-full font-impact animate-pulse'
+                    : 'text-xs px-3.5 py-1.5 bg-yellow-500/20 text-yellow-300 border border-yellow-500/40 rounded-full font-bold';
             } else {
-                roleBadge.innerText = "관전 및 지원 중";
+                roleBadge.innerText = "관전 및 작전 지원 중";
             }
 
             // Step Instruction Text
             const instEl = document.getElementById('step-instruction');
+            const stepNames = ["1단계: 괄호 풀기", "2단계: 미지수 이항", "3단계: 동류항 정리", "4단계: 최종 해 도출"];
             if (currentStage === 0) {
                 instEl.innerText = "【1단계: 괄호 풀기】 분배법칙을 전개했을 때 좌변 괄호 안의 상수값을 입력하세요!";
             } else if (currentStage === 1) {
@@ -782,6 +828,7 @@
                 waitingNotice.classList.add('hidden');
                 stepInput.disabled = false;
                 submitBtn.disabled = false;
+                submitBtn.innerHTML = `<span>🎯</span><span>[내 차례] ${currentStage + 1}단계 정답 장전</span>`;
                 stepInput.focus();
             } else {
                 inputControls.classList.add('hidden');
@@ -791,15 +838,32 @@
                 currentActorEl.innerText = `${activeMemberName} (${activeMemberIndex + 1}번 대원)`;
             }
 
-            // Highlight Step Tracker Cards
+            // 4개 단계 카드에 담당 대원 이름과 차례를 직접 명시
+            const stageTitles = [
+                "① 괄호 풀기 (전개)",
+                "② 미지수 좌변 이항",
+                "③ 상수항 우변 정리",
+                "④ 최종 해 도출 & 발사"
+            ];
+
             for (let s = 0; s < 4; s++) {
                 const card = document.getElementById(`stage-card-${s}`);
+                const stageActorIdx = getActorIndexForStage(s, teamSize);
+                const stageActorObj = myMembers[stageActorIdx];
+                const stageActorName = stageActorObj ? stageActorObj.name : `${stageActorIdx + 1}번 대원`;
+                const isThisStageMine = (myIndex === stageActorIdx);
+
+                let badgeHtml = `<div class="font-bold text-xs">${stageTitles[s]}</div>`;
+                badgeHtml += `<div class="text-[11px] mt-1 ${isThisStageMine ? 'text-yellow-300 font-bold' : 'text-slate-300'}">담당: ${stageActorName}${isThisStageMine ? ' (나)' : ''}</div>`;
+
+                card.innerHTML = badgeHtml;
+
                 if (s === currentStage) {
-                    card.className = "p-2.5 rounded-xl border-2 transition-all bg-yellow-400/20 border-yellow-300 text-yellow-300 font-bold animate-pulse";
+                    card.className = "p-2.5 rounded-xl border-2 transition-all bg-yellow-400/20 border-yellow-300 text-yellow-300 font-bold animate-pulse shadow-lg";
                 } else if (s < currentStage) {
                     card.className = "p-2.5 rounded-xl border transition-all bg-emerald-950/60 border-emerald-500/60 text-emerald-300 font-semibold";
                 } else {
-                    card.className = "p-2.5 rounded-xl border transition-all bg-slate-900/60 border-slate-700 text-slate-500";
+                    card.className = "p-2.5 rounded-xl border transition-all bg-slate-900/60 border-slate-700 text-slate-400";
                 }
             }
         }
