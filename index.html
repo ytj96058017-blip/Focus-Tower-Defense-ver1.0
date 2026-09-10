@@ -447,25 +447,44 @@
             );
         }
 
-        // 매 문제마다 4개의 역할(0, 1, 2, 3)을 무작위 셔플하여 공평하게 분배
-        function generateRoleMapping() {
-            const arr = [0, 1, 2, 3];
-            for (let i = arr.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [arr[i], arr[j]] = [arr[j], arr[i]];
-            }
-            return arr;
+        // 매 문제가 출제될 때마다 4개 단계의 순서를 무작위로 재배치 (직전 문제의 포 발사자와 중복 방지)
+        function generateRoleOrder(teamSize, prevLastActor = -1) {
+            if (teamSize <= 1) return [0, 0, 0, 0];
+
+            let order = [];
+            let attempts = 0;
+
+            do {
+                attempts++;
+                if (teamSize >= 4) {
+                    // 4인 이상: 4명이 1인 1역할을 무작위 셔플
+                    order = [0, 1, 2, 3];
+                    for (let i = order.length - 1; i > 0; i--) {
+                        const j = Math.floor(Math.random() * (i + 1));
+                        [order[i], order[j]] = [order[j], order[i]];
+                    }
+                } else if (teamSize === 3) {
+                    // 3인: 3명이 골고루 맡되, 1명이 2단계를 담당 (누가 2단계 맡을지도 랜덤)
+                    const extra = Math.floor(Math.random() * 3);
+                    order = [0, 1, 2, extra];
+                    for (let i = order.length - 1; i > 0; i--) {
+                        const j = Math.floor(Math.random() * (i + 1));
+                        [order[i], order[j]] = [order[j], order[i]];
+                    }
+                } else if (teamSize === 2) {
+                    // 2인: 매 문제마다 마지막 4단계(포 발사)를 번갈아 가며 맡도록 교대
+                    const last = prevLastActor === 0 ? 1 : 0;
+                    const other = last === 0 ? 1 : 0;
+                    order = Math.random() < 0.5 
+                        ? [other, last, other, last] 
+                        : [last, other, other, last];
+                }
+            } while (attempts < 20 && teamSize > 1 && order[3] === prevLastActor);
+
+            return order;
         }
 
-        function getActorIndexForStage(stage, teamSize, roleMap) {
-            if (teamSize <= 1) return 0;
-            if (Array.isArray(roleMap) && roleMap.length > stage) {
-                return roleMap[stage] % teamSize;
-            }
-            return stage % teamSize;
-        }
-
-        function getRoleDescription(memberIndex, teamSize, roleMap) {
+        function getRoleDescription(memberIndex, teamSize, roleOrder) {
             if (teamSize <= 1) return "총괄 사령관 (전 단계 단독 수행)";
             const stageNames = [
                 "① 괄호 전개",
@@ -474,8 +493,9 @@
                 "④ 최종 해 & 포탄 발사 🚀"
             ];
             const myAssignedStages = [];
+            const safeOrder = Array.isArray(roleOrder) && roleOrder.length === 4 ? roleOrder : [0, 1, 2, 3];
             for (let s = 0; s < 4; s++) {
-                if (getActorIndexForStage(s, teamSize, roleMap) === memberIndex) {
+                if ((safeOrder[s] % teamSize) === memberIndex) {
                     myAssignedStages.push(stageNames[s]);
                 }
             }
@@ -551,8 +571,10 @@
                 betaStage: 0,
                 alphaProblem: generateRandomProblem(),
                 betaProblem: generateRandomProblem(),
-                alphaRoleMap: generateRoleMapping(),
-                betaRoleMap: generateRoleMapping(),
+                alphaRoleOrder: generateRoleOrder(1),
+                betaRoleOrder: generateRoleOrder(1),
+                alphaProblemCount: 1,
+                betaProblemCount: 1,
                 lastAttack: null,
                 lastRepair: null,
                 smokeTarget: null,
@@ -629,8 +651,10 @@
 
                     if (team === 'alpha') {
                         initialData.alphaMembers = mergeMembers(initialData.alphaMembers, [myMemberObj]);
+                        initialData.alphaRoleOrder = generateRoleOrder(initialData.alphaMembers.length);
                     } else {
                         initialData.betaMembers = mergeMembers(initialData.betaMembers, [myMemberObj]);
+                        initialData.betaRoleOrder = generateRoleOrder(initialData.betaMembers.length);
                     }
 
                     initialData.updatedAt = Date.now();
@@ -769,7 +793,8 @@
             const myMembers = mergeMembers([], myRawMembers);
             const currentStage = team === 'alpha' ? (data.alphaStage || 0) : (data.betaStage || 0);
             const currentProb = team === 'alpha' ? data.alphaProblem : data.betaProblem;
-            const currentRoleMap = team === 'alpha' ? data.alphaRoleMap : data.betaRoleMap;
+            const currentRoleOrder = team === 'alpha' ? (data.alphaRoleOrder || [0, 1, 2, 3]) : (data.betaRoleOrder || [0, 1, 2, 3]);
+            const problemCount = team === 'alpha' ? (data.alphaProblemCount || 1) : (data.betaProblemCount || 1);
 
             if (!currentProb) return;
 
@@ -778,10 +803,10 @@
             // My Team Badge
             const teamBadge = document.getElementById('my-team-badge');
             if (team === 'alpha') {
-                teamBadge.innerText = '🔵 알파 요새 (청군)';
+                teamBadge.innerText = `🔵 알파 요새 (청군) [작전 #${problemCount}]`;
                 teamBadge.className = 'text-xs px-3.5 py-1.5 bg-blue-500/25 text-blue-300 border border-blue-400 rounded-full font-bold';
             } else {
-                teamBadge.innerText = '🔴 베타 요새 (백군)';
+                teamBadge.innerText = `🔴 베타 요새 (백군) [작전 #${problemCount}]`;
                 teamBadge.className = 'text-xs px-3.5 py-1.5 bg-red-500/25 text-red-300 border border-red-400 rounded-full font-bold';
             }
 
@@ -789,8 +814,8 @@
             const teamSize = Math.max(1, myMembers.length);
             const myIndex = myMembers.findIndex(m => m.name === currentUserName);
             
-            // 현재 단계(0~3)를 계산해야 하는 대원의 인덱스 (이번 문제의 셔플 맵 적용)
-            const activeMemberIndex = getActorIndexForStage(currentStage, teamSize, currentRoleMap);
+            // 이번 문제의 동적 순서(currentRoleOrder)에 따라 현재 단계의 담당 대원 결정
+            const activeMemberIndex = currentRoleOrder[currentStage] % teamSize;
             const activeMemberObj = myMembers[activeMemberIndex];
             const activeMemberName = activeMemberObj ? activeMemberObj.name : `${activeMemberIndex + 1}번 대원`;
 
@@ -803,10 +828,10 @@
             }
             prevWasMyTurn = isMyTurn;
 
-            // My Assigned Role Label (이번 문제에서 내가 맡은 파트 표시)
+            // My Assigned Role Label (이번 문제에서 내가 배정받은 역할 실시간 갱신)
             const roleBadge = document.getElementById('my-role-badge');
             if (myIndex !== -1) {
-                roleBadge.innerText = `내 이번 작전 역할: ${getRoleDescription(myIndex, teamSize, currentRoleMap)}`;
+                roleBadge.innerText = `이번 작전 내 역할: ${getRoleDescription(myIndex, teamSize, currentRoleOrder)}`;
                 roleBadge.className = isMyTurn 
                     ? 'text-xs px-3.5 py-1.5 bg-yellow-400 text-slate-950 border-2 border-yellow-300 rounded-full font-impact animate-pulse'
                     : 'text-xs px-3.5 py-1.5 bg-yellow-500/20 text-yellow-300 border border-yellow-500/40 rounded-full font-bold';
@@ -849,17 +874,17 @@
                 currentActorEl.innerText = `${activeMemberName} (${activeMemberIndex + 1}번 대원)`;
             }
 
-            // 4개 단계 카드에 담당 대원 이름과 차례를 직접 명시
+            // 4개 단계 카드에 이번 문제의 담당 대원 이름과 차례를 직접 명시
             const stageTitles = [
                 "① 괄호 풀기 (전개)",
                 "② 미지수 좌변 이항",
                 "③ 상수항 우변 정리",
-                "④ 최종 해 도출 & 발사"
+                "④ 최종 해 도출 & 발사 🚀"
             ];
 
             for (let s = 0; s < 4; s++) {
                 const card = document.getElementById(`stage-card-${s}`);
-                const stageActorIdx = getActorIndexForStage(s, teamSize, currentRoleMap);
+                const stageActorIdx = currentRoleOrder[s] % teamSize;
                 const stageActorObj = myMembers[stageActorIdx];
                 const stageActorName = stageActorObj ? stageActorObj.name : `${stageActorIdx + 1}번 대원`;
                 const isThisStageMine = (myIndex === stageActorIdx);
@@ -1026,15 +1051,21 @@
                 showStepFeedback(`🛠️ 수리 드론 출현! 아군 성채를 직접 나노 수리 중입니다! (+${heal} HP)`, false);
             }
 
-            // 문제 및 단계 리셋 & 새 문제 출제 시 역할 무작위 재배치
+            // 문제 및 단계 리셋 & 새 문제 출제 시 직전 포 발사자와 다른 대원이 포를 쏘도록 순서 재배치!
             if (myTeam === 'alpha') {
+                const teamSize = Math.max(1, (nextData.alphaMembers || []).length);
+                const prevLast = (nextData.alphaRoleOrder && nextData.alphaRoleOrder[3] !== undefined) ? nextData.alphaRoleOrder[3] : -1;
                 nextData.alphaProblem = newProb;
                 nextData.alphaStage = 0;
-                nextData.alphaRoleMap = generateRoleMapping();
+                nextData.alphaRoleOrder = generateRoleOrder(teamSize, prevLast);
+                nextData.alphaProblemCount = (nextData.alphaProblemCount || 1) + 1;
             } else {
+                const teamSize = Math.max(1, (nextData.betaMembers || []).length);
+                const prevLast = (nextData.betaRoleOrder && nextData.betaRoleOrder[3] !== undefined) ? nextData.betaRoleOrder[3] : -1;
                 nextData.betaProblem = newProb;
                 nextData.betaStage = 0;
-                nextData.betaRoleMap = generateRoleMapping();
+                nextData.betaRoleOrder = generateRoleOrder(teamSize, prevLast);
+                nextData.betaProblemCount = (nextData.betaProblemCount || 1) + 1;
             }
 
             if (attackPayload) nextData.lastAttack = attackPayload;
