@@ -451,24 +451,25 @@
 
         function cleanMemberList(members = []) {
             const map = new Map();
-            const now = Date.now();
             members.forEach(item => {
                 if (!item) return;
                 const id = item.id || item.name;
                 const name = item.name || item.id || '대원';
-                const joinedAt = item.joinedAt || now;
-                const lastSeen = item.lastSeen || now;
+                const joinedAt = item.joinedAt || Date.now();
+                const lastSeen = item.lastSeen || Date.now();
                 
-                // 60초 이상 무반응인 유령만 정리하며, 기기 간 시계 오차(Clock Drift)를 안전하게 허용
-                if (Math.abs(now - lastSeen) < 60000 || id === myPlayerId) {
-                    if (!map.has(id) || map.get(id).joinedAt > joinedAt) {
-                        map.set(id, { id, name, joinedAt, lastSeen });
-                    }
+                // 중복 ID 방지 및 등록 순서 보존
+                if (!map.has(id)) {
+                    map.set(id, { id, name, joinedAt, lastSeen });
                 }
             });
             return Array.from(map.values()).sort((a, b) => 
-                a.joinedAt !== b.joinedAt ? a.joinedAt - b.joinedAt : a.name.localeCompare(b.name)
+                (a.joinedAt || 0) !== (b.joinedAt || 0) ? (a.joinedAt || 0) - (b.joinedAt || 0) : a.name.localeCompare(b.name)
             );
+        }
+
+        function mergeMembers(listA = [], listB = []) {
+            return cleanMemberList([...(listA || []), ...(listB || [])]);
         }
 
         /* 
@@ -590,18 +591,13 @@
             else initialData.betaMembers = [myMemberObj];
             applyRoomState(initialData);
 
-            // 3. 백그라운드에서 안전하게 실시간 클라우드 DB 연동 및 리스너 등록
+            // 3. 백그라운드에서 실시간 클라우드 DB 연동 및 대원 등록
             try {
                 if (!useFallback && db) {
                     const roomRef = doc(db, 'tower_defense_rooms', currentRoomCode);
                     startFirestoreListener(roomRef);
 
-                    // 2.5초 타임아웃 래퍼로 시크릿 창 무한 멈춤 원천 방지
-                    const snap = await Promise.race([
-                        getDoc(roomRef),
-                        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 2500))
-                    ]);
-
+                    const snap = await getDoc(roomRef);
                     let currentData = snap.exists() ? snap.data() : createInitialRoomData();
                     const listKey = team === 'alpha' ? 'alphaMembers' : 'betaMembers';
                     let currentList = currentData[listKey] || [];
@@ -613,7 +609,7 @@
                     await setDoc(roomRef, currentData, { merge: true });
                 }
             } catch (err) {
-                console.warn("Join sync fallback to listener:", err);
+                console.warn("Join sync error:", err);
             }
 
             // Synchro timer interval
@@ -771,7 +767,7 @@
         function updatePipelineUI(data) {
             const team = myTeam;
             const myRawMembers = team === 'alpha' ? (data.alphaMembers || []) : (data.betaMembers || []);
-            const myMembers = mergeMembers([], myRawMembers);
+            const myMembers = cleanMemberList(myRawMembers);
             const currentStage = team === 'alpha' ? (data.alphaStage || 0) : (data.betaStage || 0);
             const currentProb = team === 'alpha' ? data.alphaProblem : data.betaProblem;
             const problemCount = team === 'alpha' ? (data.alphaProblemCount || 1) : (data.betaProblemCount || 1);
