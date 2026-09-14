@@ -393,7 +393,6 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, doc, getDoc, setDoc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = {
@@ -412,8 +411,7 @@
         try {
             const app = initializeApp(firebaseConfig);
             db = getFirestore(app);
-            const auth = getAuth(app);
-            await signInAnonymously(auth);
+            useFallback = false;
             const badge = document.getElementById('db-status-badge');
             if (badge) {
                 badge.innerText = "🟢 클라우드 DB 정상 연결!";
@@ -423,8 +421,8 @@
             useFallback = true;
             const badge = document.getElementById('db-status-badge');
             if (badge) {
-                badge.innerText = "🟡 로컬 전용 모드 작동";
-                badge.className = "text-yellow-400 font-bold";
+                badge.innerText = "🔴 로컬 모드 작동 (" + e.message + ")";
+                badge.className = "text-rose-400 font-bold";
             }
         }
 
@@ -432,6 +430,7 @@
         let currentRoomCode = '';
         let myTeam = '';
         let myPlayerId = 'p_' + Math.random().toString(36).substring(2, 9);
+        const myJoinedAt = Date.now();
         let unsubscribeRoom = null;
         let lastKnownRoomData = null;
         let heartbeatInterval = null;
@@ -447,19 +446,20 @@
         let currentInterceptProblem = null;
         let smokeWipesRemaining = 5;
 
-        function mergeMembers(listA = [], listB = []) {
+        function cleanMemberList(members = []) {
             const map = new Map();
             const now = Date.now();
-            [...listA, ...listB].forEach(item => {
+            members.forEach(item => {
                 if (!item) return;
-                const obj = typeof item === 'string' 
-                    ? { id: item, name: item, lastSeen: now, joinedAt: now } 
-                    : { id: item.id || item.name, name: item.name, lastSeen: item.lastSeen || now, joinedAt: item.joinedAt || now };
+                const id = item.id || item.name;
+                const name = item.name || item.id || '대원';
+                const joinedAt = item.joinedAt || now;
+                const lastSeen = item.lastSeen || now;
                 
-                // 12초 이상 하트비트가 없는 유령 대원은 자동 퇴출
-                if (now - obj.lastSeen < 12000) {
-                    if (!map.has(obj.id) || map.get(obj.id).joinedAt > obj.joinedAt) {
-                        map.set(obj.id, obj);
+                // 60초 이상 무반응인 유령만 정리하며, 기기 간 시계 오차(Clock Drift)를 안전하게 허용
+                if (Math.abs(now - lastSeen) < 60000 || id === myPlayerId) {
+                    if (!map.has(id) || map.get(id).joinedAt > joinedAt) {
+                        map.set(id, { id, name, joinedAt, lastSeen });
                     }
                 }
             });
@@ -573,14 +573,13 @@
             currentRoomCode = code;
             myTeam = team;
 
-            const myMemberObj = { id: myPlayerId, name: currentUserName, lastSeen: Date.now(), joinedAt: Date.now() };
+            const myMemberObj = { id: myPlayerId, name: currentUserName, lastSeen: Date.now(), joinedAt: myJoinedAt };
             document.getElementById('lobby-status').innerText = "전장에 접속하여 팀원을 탐색 중...";
 
             let initialData = null;
 
             try {
                 if (!useFallback && db) {
-                    // 최상위 직관적 컬렉션 tower_defense_rooms 사용
                     const roomRef = doc(db, 'tower_defense_rooms', currentRoomCode);
                     const snap = await getDoc(roomRef);
 
@@ -590,17 +589,18 @@
                         initialData = createInitialRoomData();
                     }
 
-                    if (team === 'alpha') {
-                        initialData.alphaMembers = mergeMembers(initialData.alphaMembers, [myMemberObj]);
-                    } else {
-                        initialData.betaMembers = mergeMembers(initialData.betaMembers, [myMemberObj]);
-                    }
+                    const listKey = team === 'alpha' ? 'alphaMembers' : 'betaMembers';
+                    let currentList = initialData[listKey] || [];
+                    currentList = currentList.filter(m => (m.id || m.name) !== myPlayerId);
+                    currentList.push(myMemberObj);
+                    initialData[listKey] = cleanMemberList(currentList);
 
                     initialData.updatedAt = Date.now();
                     await setDoc(roomRef, initialData, { merge: true });
                     startFirestoreListener(roomRef);
                 }
             } catch (err) {
+                console.error("Join error:", err);
                 useFallback = true;
             }
 
@@ -610,7 +610,7 @@
                 else initialData.betaMembers = [myMemberObj];
             }
 
-            applyRoomState(initialData, true);
+            applyRoomState(initialData);
 
             // Switch to Battle Screen
             document.getElementById('lobby-screen').classList.add('hidden');
@@ -632,39 +632,42 @@
         };
 
         async function sendHeartbeat() {
-            if (!currentRoomCode || !myTeam) return;
-            const myMemberObj = { id: myPlayerId, name: currentUserName, lastSeen: Date.now(), joinedAt: Date.now() };
+            if (!currentRoomCode || !myTeam || useFallback || !db) return;
             try {
-                if (!useFallback && db) {
-                    const roomRef = doc(db, 'tower_defense_rooms', currentRoomCode);
-                    const snap = await getDoc(roomRef);
-                    if (snap.exists()) {
-                        const data = snap.data();
-                        if (myTeam === 'alpha') data.alphaMembers = mergeMembers(data.alphaMembers, [myMemberObj]);
-                        else data.betaMembers = mergeMembers(data.betaMembers, [myMemberObj]);
-                        data.updatedAt = Date.now();
-                        await updateDoc(roomRef, data);
+                const roomRef = doc(db, 'tower_defense_rooms', currentRoomCode);
+                const snap = await getDoc(roomRef);
+                if (snap.exists()) {
+                    const data = snap.data();
+                    const listKey = myTeam === 'alpha' ? 'alphaMembers' : 'betaMembers';
+                    let list = data[listKey] || [];
+                    let found = false;
+                    list = list.map(m => {
+                        if ((m.id || m.name) === myPlayerId) {
+                            found = true;
+                            return { ...m, lastSeen: Date.now() };
+                        }
+                        return m;
+                    });
+                    if (!found) {
+                        list.push({ id: myPlayerId, name: currentUserName, lastSeen: Date.now(), joinedAt: myJoinedAt });
                     }
+                    data[listKey] = cleanMemberList(list);
+                    data.updatedAt = Date.now();
+                    await updateDoc(roomRef, { [listKey]: data[listKey], updatedAt: data.updatedAt });
                 }
             } catch (e) {}
         }
 
         async function leaveRoomCleanup() {
-            if (!currentRoomCode || !myTeam) return;
+            if (!currentRoomCode || !myTeam || useFallback || !db) return;
             try {
-                if (!useFallback && db) {
-                    const roomRef = doc(db, 'tower_defense_rooms', currentRoomCode);
-                    const snap = await getDoc(roomRef);
-                    if (snap.exists()) {
-                        const data = snap.data();
-                        if (myTeam === 'alpha') {
-                            data.alphaMembers = (data.alphaMembers || []).filter(m => (m.id || m.name) !== myPlayerId);
-                        } else {
-                            data.betaMembers = (data.betaMembers || []).filter(m => (m.id || m.name) !== myPlayerId);
-                        }
-                        data.updatedAt = Date.now();
-                        await setDoc(roomRef, data, { merge: true });
-                    }
+                const roomRef = doc(db, 'tower_defense_rooms', currentRoomCode);
+                const snap = await getDoc(roomRef);
+                if (snap.exists()) {
+                    const data = snap.data();
+                    const listKey = myTeam === 'alpha' ? 'alphaMembers' : 'betaMembers';
+                    const filtered = (data[listKey] || []).filter(m => (m.id || m.name) !== myPlayerId);
+                    await updateDoc(roomRef, { [listKey]: filtered, updatedAt: Date.now() });
                 }
             } catch (e) {}
         }
@@ -672,7 +675,7 @@
         window.resetCurrentRoomData = async function() {
             const code = currentRoomCode || document.getElementById('room-code').value.trim() || 'math101';
             const fresh = createInitialRoomData();
-            const myMemberObj = { id: myPlayerId, name: currentUserName || '대원', lastSeen: Date.now(), joinedAt: Date.now() };
+            const myMemberObj = { id: myPlayerId, name: currentUserName || '대원', lastSeen: Date.now(), joinedAt: myJoinedAt };
             if (myTeam === 'alpha') fresh.alphaMembers = [myMemberObj];
             else if (myTeam === 'beta') fresh.betaMembers = [myMemberObj];
 
@@ -682,7 +685,7 @@
                     await setDoc(roomRef, fresh);
                 }
             } catch (e) {}
-            applyRoomState(fresh, true);
+            applyRoomState(fresh);
             showGeneralModal("초기화 완료", "배틀룸 대원 명단과 요새 체력이 깨끗하게 리셋되었습니다!");
         };
 
@@ -690,21 +693,18 @@
             if (unsubscribeRoom) unsubscribeRoom();
             unsubscribeRoom = onSnapshot(roomRef, (snap) => {
                 if (!snap.exists()) return;
-                applyRoomState(snap.data(), false);
-            }, () => { useFallback = true; });
+                applyRoomState(snap.data());
+            }, (err) => { 
+                console.warn("Snapshot error:", err);
+                useFallback = true; 
+            });
         }
 
-        function applyRoomState(data, broadcastEcho = false) {
+        function applyRoomState(data) {
             if (!data) return;
 
-            if (lastKnownRoomData) {
-                data.alphaMembers = mergeMembers(lastKnownRoomData.alphaMembers, data.alphaMembers);
-                data.betaMembers = mergeMembers(lastKnownRoomData.betaMembers, data.betaMembers);
-            } else {
-                data.alphaMembers = mergeMembers([], data.alphaMembers);
-                data.betaMembers = mergeMembers([], data.betaMembers);
-            }
-
+            data.alphaMembers = cleanMemberList(data.alphaMembers || []);
+            data.betaMembers = cleanMemberList(data.betaMembers || []);
             lastKnownRoomData = data;
 
             // Attack projectile detection
@@ -748,7 +748,7 @@
         }
 
         async function syncStateUpdate(nextData) {
-            applyRoomState(nextData, true);
+            applyRoomState(nextData);
             if (!useFallback && db) {
                 try {
                     const roomRef = doc(db, 'tower_defense_rooms', currentRoomCode);
