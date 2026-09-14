@@ -393,7 +393,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, collection, doc, getDoc, setDoc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { initializeFirestore, memoryLocalCache, doc, getDoc, setDoc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyChxrOzoTxFMy_BvkvNZLXAp1oRvN7Fb1g",
@@ -410,7 +410,10 @@
 
         try {
             const app = initializeApp(firebaseConfig);
-            db = getFirestore(app);
+            // 시크릿 창/개인정보보호 모드에서도 스토리지 락 없이 즉각 작동하도록 memoryLocalCache 적용
+            db = initializeFirestore(app, {
+                localCache: memoryLocalCache()
+            });
             useFallback = false;
             const badge = document.getElementById('db-status-badge');
             if (badge) {
@@ -574,49 +577,44 @@
             myTeam = team;
 
             const myMemberObj = { id: myPlayerId, name: currentUserName, lastSeen: Date.now(), joinedAt: myJoinedAt };
-            document.getElementById('lobby-status').innerText = "전장에 접속하여 팀원을 탐색 중...";
 
-            let initialData = null;
-
-            try {
-                if (!useFallback && db) {
-                    const roomRef = doc(db, 'tower_defense_rooms', currentRoomCode);
-                    const snap = await getDoc(roomRef);
-
-                    if (snap.exists()) {
-                        initialData = snap.data();
-                    } else {
-                        initialData = createInitialRoomData();
-                    }
-
-                    const listKey = team === 'alpha' ? 'alphaMembers' : 'betaMembers';
-                    let currentList = initialData[listKey] || [];
-                    currentList = currentList.filter(m => (m.id || m.name) !== myPlayerId);
-                    currentList.push(myMemberObj);
-                    initialData[listKey] = cleanMemberList(currentList);
-
-                    initialData.updatedAt = Date.now();
-                    await setDoc(roomRef, initialData, { merge: true });
-                    startFirestoreListener(roomRef);
-                }
-            } catch (err) {
-                console.error("Join error:", err);
-                useFallback = true;
-            }
-
-            if (!initialData || useFallback) {
-                initialData = createInitialRoomData();
-                if (team === 'alpha') initialData.alphaMembers = [myMemberObj];
-                else initialData.betaMembers = [myMemberObj];
-            }
-
-            applyRoomState(initialData);
-
-            // Switch to Battle Screen
+            // 1. 로비 화면 멈춤을 방지하기 위해 즉시 전장 화면으로 직행
             document.getElementById('lobby-screen').classList.add('hidden');
             document.getElementById('battle-screen').classList.remove('hidden');
             initCanvas();
             sfx.success();
+
+            // 2. 초기 로컬 상태를 우선 적용하여 UI 즉시 표시
+            let initialData = createInitialRoomData();
+            if (team === 'alpha') initialData.alphaMembers = [myMemberObj];
+            else initialData.betaMembers = [myMemberObj];
+            applyRoomState(initialData);
+
+            // 3. 백그라운드에서 안전하게 실시간 클라우드 DB 연동 및 리스너 등록
+            try {
+                if (!useFallback && db) {
+                    const roomRef = doc(db, 'tower_defense_rooms', currentRoomCode);
+                    startFirestoreListener(roomRef);
+
+                    // 2.5초 타임아웃 래퍼로 시크릿 창 무한 멈춤 원천 방지
+                    const snap = await Promise.race([
+                        getDoc(roomRef),
+                        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 2500))
+                    ]);
+
+                    let currentData = snap.exists() ? snap.data() : createInitialRoomData();
+                    const listKey = team === 'alpha' ? 'alphaMembers' : 'betaMembers';
+                    let currentList = currentData[listKey] || [];
+                    currentList = currentList.filter(m => (m.id || m.name) !== myPlayerId);
+                    currentList.push(myMemberObj);
+                    currentData[listKey] = cleanMemberList(currentList);
+                    currentData.updatedAt = Date.now();
+
+                    await setDoc(roomRef, currentData, { merge: true });
+                }
+            } catch (err) {
+                console.warn("Join sync fallback to listener:", err);
+            }
 
             // Synchro timer interval
             if (!synchroTimerInterval) {
