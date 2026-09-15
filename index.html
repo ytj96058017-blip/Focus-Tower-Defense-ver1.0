@@ -137,7 +137,7 @@
                 </div>
 
                 <!-- Beta Team Card -->
-                <div class="flex flex-col gap-2 p-3.5 rounded-xl bg-rose-950/50 border-2 border-rose-500/40">
+                <div class="flex flex-col gap-2 p-3.5 rounded-2xl bg-rose-950/50 border-2 border-rose-500/40">
                     <div class="flex justify-between items-center text-sm font-bold">
                         <span class="text-rose-300 font-impact text-lg flex items-center gap-1.5">
                             <span>🔴</span> 베타 요새 성벽
@@ -410,7 +410,7 @@
 
         try {
             const app = initializeApp(firebaseConfig);
-            // 시크릿 창/개인정보보호 모드에서도 스토리지 락 없이 즉각 작동하도록 memoryLocalCache 적용
+            // In incognito mode, avoid disk-locking IndexedDB by enforcing memoryLocalCache
             db = initializeFirestore(app, {
                 localCache: memoryLocalCache()
             });
@@ -436,7 +436,6 @@
         const myJoinedAt = Date.now();
         let unsubscribeRoom = null;
         let lastKnownRoomData = null;
-        let heartbeatInterval = null;
 
         // Problem & Pipeline State
         let currentProblemStartTime = Date.now();
@@ -456,11 +455,9 @@
                 const id = item.id || item.name;
                 const name = item.name || item.id || '대원';
                 const joinedAt = item.joinedAt || Date.now();
-                const lastSeen = item.lastSeen || Date.now();
                 
-                // 중복 ID 방지 및 등록 순서 보존
                 if (!map.has(id)) {
-                    map.set(id, { id, name, joinedAt, lastSeen });
+                    map.set(id, { id, name, joinedAt });
                 }
             });
             return Array.from(map.values()).sort((a, b) => 
@@ -472,11 +469,6 @@
             return cleanMemberList([...(listA || []), ...(listB || [])]);
         }
 
-        /* 
-           [핵심 일원화 공식]
-           - 한 문제 안에서는 대원들이 1단계씩 번갈아 가며 협동
-           - 문제가 바뀔 때마다 순서가 한 칸씩 회전하여 매번 다른 대원이 4단계를 전담
-        */
         function getStageActorIndex(stage, teamSize, problemCount = 1) {
             if (teamSize <= 1) return 0;
             const shift = (Math.max(1, problemCount) - 1) % teamSize;
@@ -577,21 +569,21 @@
             currentRoomCode = code;
             myTeam = team;
 
-            const myMemberObj = { id: myPlayerId, name: currentUserName, lastSeen: Date.now(), joinedAt: myJoinedAt };
+            const myMemberObj = { id: myPlayerId, name: currentUserName, joinedAt: myJoinedAt };
 
-            // 1. 로비 화면 멈춤을 방지하기 위해 즉시 전장 화면으로 직행
+            // 1. Immediately switch to battle screen
             document.getElementById('lobby-screen').classList.add('hidden');
             document.getElementById('battle-screen').classList.remove('hidden');
             initCanvas();
             sfx.success();
 
-            // 2. 초기 로컬 상태를 우선 적용하여 UI 즉시 표시
+            // 2. Render initial local state
             let initialData = createInitialRoomData();
             if (team === 'alpha') initialData.alphaMembers = [myMemberObj];
             else initialData.betaMembers = [myMemberObj];
             applyRoomState(initialData);
 
-            // 3. 백그라운드에서 실시간 클라우드 DB 연동 및 대원 등록
+            // 3. One-shot register to Firestore (NO recurring heartbeats)
             try {
                 if (!useFallback && db) {
                     const roomRef = doc(db, 'tower_defense_rooms', currentRoomCode);
@@ -612,45 +604,16 @@
                 console.warn("Join sync error:", err);
             }
 
-            // Synchro timer interval
+            // Synchro timer interval (Local only)
             if (!synchroTimerInterval) {
                 currentProblemStartTime = Date.now();
                 mistakesOnCurrentProblem = 0;
                 synchroTimerInterval = setInterval(updateSynchroGauge, 250);
             }
 
-            // 3.5초마다 활동 신호 전송
-            if (heartbeatInterval) clearInterval(heartbeatInterval);
-            heartbeatInterval = setInterval(sendHeartbeat, 3500);
+            // Unload cleanup on exit
             window.addEventListener('beforeunload', leaveRoomCleanup);
         };
-
-        async function sendHeartbeat() {
-            if (!currentRoomCode || !myTeam || useFallback || !db) return;
-            try {
-                const roomRef = doc(db, 'tower_defense_rooms', currentRoomCode);
-                const snap = await getDoc(roomRef);
-                if (snap.exists()) {
-                    const data = snap.data();
-                    const listKey = myTeam === 'alpha' ? 'alphaMembers' : 'betaMembers';
-                    let list = data[listKey] || [];
-                    let found = false;
-                    list = list.map(m => {
-                        if ((m.id || m.name) === myPlayerId) {
-                            found = true;
-                            return { ...m, lastSeen: Date.now() };
-                        }
-                        return m;
-                    });
-                    if (!found) {
-                        list.push({ id: myPlayerId, name: currentUserName, lastSeen: Date.now(), joinedAt: myJoinedAt });
-                    }
-                    data[listKey] = cleanMemberList(list);
-                    data.updatedAt = Date.now();
-                    await updateDoc(roomRef, { [listKey]: data[listKey], updatedAt: data.updatedAt });
-                }
-            } catch (e) {}
-        }
 
         async function leaveRoomCleanup() {
             if (!currentRoomCode || !myTeam || useFallback || !db) return;
@@ -669,7 +632,7 @@
         window.resetCurrentRoomData = async function() {
             const code = currentRoomCode || document.getElementById('room-code').value.trim() || 'math101';
             const fresh = createInitialRoomData();
-            const myMemberObj = { id: myPlayerId, name: currentUserName || '대원', lastSeen: Date.now(), joinedAt: myJoinedAt };
+            const myMemberObj = { id: myPlayerId, name: currentUserName || '대원', joinedAt: myJoinedAt };
             if (myTeam === 'alpha') fresh.alphaMembers = [myMemberObj];
             else if (myTeam === 'beta') fresh.betaMembers = [myMemberObj];
 
