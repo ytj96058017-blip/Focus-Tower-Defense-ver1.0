@@ -199,7 +199,7 @@
                 <!-- Player Identity & Synchro Status -->
                 <div class="flex flex-wrap items-center justify-center gap-2 mb-3">
                     <span id="my-team-badge" class="text-xs px-3.5 py-1.5 rounded-full font-bold">소속팀</span>
-                    <span id="my-role-badge" class="text-xs px-3.5 py-1.5 bg-yellow-500/20 text-yellow-300 border border-yellow-500/40 rounded-full font-bold">내 역할</span>
+                    <span id="my-role-badge" class="text-xs px-3.5 py-1.5 bg-yellow-500/20 text-yellow-300 border border-yellow-500/40 rounded-full font-bold">내 포지션</span>
                     <span id="synchro-badge" class="text-xs px-3.5 py-1.5 bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 rounded-full font-bold">
                         ⚡ 싱크로 보너스: <span id="synchro-timer">32</span>초
                     </span>
@@ -310,19 +310,19 @@
 
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
                 <!-- Fire Ammo -->
-                <button onclick="chooseSpecialAmmo('mega_fire')" class="p-4 rounded-2xl bg-gradient-to-b from-rose-900/80 to-red-950 border-2 border-rose-500 hover:border-yellow-300 flex flex-col items-center gap-2 transition hover:scale-105 active:scale-95">
+                <button onclick="chooseSpecialAmmo('mega_fire')" class="p-4 rounded-2xl bg-gradient-to-b from-rose-900/80 to-red-950 border-2 border-rose-500 hover:border-yellow-300 flex flex-col items-center gap-2 transition hover:scale-105 active:scale-95 shadow-xl">
                     <span class="text-3xl">🔥</span>
                     <span class="font-impact text-base text-rose-300">메가 화염탄</span>
                     <span class="text-xs text-slate-300">적 요새에 막대한 피해<br><b class="text-yellow-400">-35 HP</b></span>
                 </button>
                 <!-- Smoke Ammo -->
-                <button onclick="chooseSpecialAmmo('smoke')" class="p-4 rounded-2xl bg-gradient-to-b from-slate-800/80 to-slate-950 border-2 border-slate-500 hover:border-yellow-300 flex flex-col items-center gap-2 transition hover:scale-105 active:scale-95">
+                <button onclick="chooseSpecialAmmo('smoke')" class="p-4 rounded-2xl bg-gradient-to-b from-slate-800/80 to-slate-950 border-2 border-slate-500 hover:border-yellow-300 flex flex-col items-center gap-2 transition hover:scale-105 active:scale-95 shadow-xl">
                     <span class="text-3xl">💨</span>
                     <span class="font-impact text-base text-slate-300">먹구름 방해탄</span>
                     <span class="text-xs text-slate-300">적 화면 시야 차단<br><b class="text-rose-400">-15 HP + 연막</b></span>
                 </button>
                 <!-- Repair Drone -->
-                <button onclick="chooseSpecialAmmo('repair')" class="p-4 rounded-2xl bg-gradient-to-b from-emerald-900/80 to-teal-950 border-2 border-emerald-500 hover:border-yellow-300 flex flex-col items-center gap-2 transition hover:scale-105 active:scale-95">
+                <button onclick="chooseSpecialAmmo('repair')" class="p-4 rounded-2xl bg-gradient-to-b from-emerald-900/80 to-teal-950 border-2 border-emerald-500 hover:border-yellow-300 flex flex-col items-center gap-2 transition hover:scale-105 active:scale-95 shadow-xl">
                     <span class="text-3xl">🛠️</span>
                     <span class="font-impact text-base text-emerald-300">수리 드론</span>
                     <span class="text-xs text-slate-300">아군 성벽 직접 수리<br><b class="text-emerald-400">+25 HP 복구</b></span>
@@ -437,6 +437,7 @@
         const sfx = new SoundFX();
     </script>
 
+    <!-- Main Game Logic and Firebase Synchronizer -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { initializeFirestore, memoryLocalCache, doc, getDoc, setDoc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
@@ -526,8 +527,8 @@
             if (teamSize <= 1) return "총괄 사령관 (전 단계 단독 수행)";
             const stageNames = [
                 "① 괄호 전개",
-                "② 좌변 이항",
-                "③ 우변 정리",
+                "② 미지수 좌변 이항",
+                "③ 상수항 우변 정리",
                 "④ 해 도출 & 포탄 발사 🚀"
             ];
             const myAssignedStages = [];
@@ -672,6 +673,7 @@
             window.addEventListener('beforeunload', leaveRoomCleanup);
         };
 
+        // Teacher Spectator / Broadcaster Entry Function
         window.joinSpectator = async function() {
             const codeInput = document.getElementById('room-code');
             const code = (codeInput ? codeInput.value.trim() : '') || 'math101';
