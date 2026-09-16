@@ -310,19 +310,19 @@
 
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
                 <!-- Fire Ammo -->
-                <button onclick="chooseSpecialAmmo('mega_fire')" class="p-4 rounded-2xl bg-gradient-to-b from-rose-900/80 to-red-950 border-2 border-rose-500 hover:border-yellow-300 flex flex-col items-center gap-2 transition hover:scale-105 active:scale-95 shadow-xl">
+                <button id="ammo-btn-fire" onclick="chooseSpecialAmmo('mega_fire')" class="p-4 rounded-2xl bg-gradient-to-b from-rose-900/80 to-red-950 border-2 border-rose-500 hover:border-yellow-300 flex flex-col items-center gap-2 transition hover:scale-105 active:scale-95 shadow-xl">
                     <span class="text-3xl">🔥</span>
                     <span class="font-impact text-base text-rose-300">메가 화염탄</span>
                     <span class="text-xs text-slate-300">적 요새에 막대한 피해<br><b class="text-yellow-400">-35 HP</b></span>
                 </button>
                 <!-- Smoke Ammo -->
-                <button onclick="chooseSpecialAmmo('smoke')" class="p-4 rounded-2xl bg-gradient-to-b from-slate-800/80 to-slate-950 border-2 border-slate-500 hover:border-yellow-300 flex flex-col items-center gap-2 transition hover:scale-105 active:scale-95 shadow-xl">
+                <button id="ammo-btn-smoke" onclick="chooseSpecialAmmo('smoke')" class="p-4 rounded-2xl bg-gradient-to-b from-slate-800/80 to-slate-950 border-2 border-slate-500 hover:border-yellow-300 flex flex-col items-center gap-2 transition hover:scale-105 active:scale-95 shadow-xl">
                     <span class="text-3xl">💨</span>
                     <span class="font-impact text-base text-slate-300">먹구름 방해탄</span>
                     <span class="text-xs text-slate-300">적 화면 시야 차단<br><b class="text-rose-400">-15 HP + 연막</b></span>
                 </button>
                 <!-- Repair Drone -->
-                <button onclick="chooseSpecialAmmo('repair')" class="p-4 rounded-2xl bg-gradient-to-b from-emerald-900/80 to-teal-950 border-2 border-emerald-500 hover:border-yellow-300 flex flex-col items-center gap-2 transition hover:scale-105 active:scale-95 shadow-xl">
+                <button id="ammo-btn-repair" onclick="chooseSpecialAmmo('repair')" class="p-4 rounded-2xl bg-gradient-to-b from-emerald-900/80 to-teal-950 border-2 border-emerald-500 hover:border-yellow-300 flex flex-col items-center gap-2 transition hover:scale-105 active:scale-95 shadow-xl">
                     <span class="text-3xl">🛠️</span>
                     <span class="font-impact text-base text-emerald-300">수리 드론</span>
                     <span class="text-xs text-slate-300">아군 성벽 직접 수리<br><b class="text-emerald-400">+25 HP 복구</b></span>
@@ -495,7 +495,7 @@
         let currentInterceptProblem = null;
         let smokeWipesRemaining = 5;
 
-        // ★ [연타 방지 가드 플래그] 전술 포탄 발사 중복 클릭 방지
+        // ★ [강력한 연타 방지 가드 시스템]
         let isActionProcessing = false;
 
         function cleanMemberList(members = []) {
@@ -672,7 +672,6 @@
             window.addEventListener('beforeunload', leaveRoomCleanup);
         };
 
-        // Teacher Spectator / Broadcaster Entry Function
         window.joinSpectator = async function() {
             const codeInput = document.getElementById('room-code');
             const code = (codeInput ? codeInput.value.trim() : '') || 'math101';
@@ -831,7 +830,6 @@
         function updatePipelineUI(data) {
             const team = myTeam;
 
-            // Handle Spectator / Broadcaster View
             if (team === 'spectator') {
                 const specPanel = document.getElementById('spectator-broadcast-panel');
                 const inputControls = document.getElementById('input-controls');
@@ -905,7 +903,6 @@
 
             document.getElementById('equation-display').innerText = currentProb.expr;
 
-            // My Team Badge
             const teamBadge = document.getElementById('my-team-badge');
             if (team === 'alpha') {
                 teamBadge.innerText = `🔵 알파 요새 (청군) [작전 #${problemCount}]`;
@@ -960,19 +957,20 @@
                 inputControls.classList.remove('hidden');
                 waitingNotice.classList.add('hidden');
                 stepInput.disabled = false;
-                submitBtn.disabled = false;
-                isActionProcessing = false;
                 if (submitBtn) {
                     submitBtn.disabled = false;
                     submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                    submitBtn.innerHTML = `<span>🎯</span><span>[내 차례] ${currentStage + 1}단계 정답 장전</span>`;
                 }
-                submitBtn.innerHTML = `<span>🎯</span><span>[내 차례] ${currentStage + 1}단계 정답 장전</span>`;
                 stepInput.focus();
             } else {
                 inputControls.classList.add('hidden');
                 waitingNotice.classList.remove('hidden');
                 stepInput.disabled = true;
-                submitBtn.disabled = true;
+                if (submitBtn) {
+                    submitBtn.disabled = true;
+                    submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                }
                 currentActorEl.innerText = `${activeMemberName} (${activeMemberIndex + 1}번 대원)`;
             }
 
@@ -1046,6 +1044,9 @@
 
                     showStepFeedback(`✨ [${currentStage + 1}단계 완료] 훌륭합니다! 다음 대원에게 바통을 넘깁니다!`, false);
                     await syncStateUpdate(nextData);
+                    
+                    // 0.4초 뒤 안전하게 연타 가드 해제
+                    setTimeout(() => { isActionProcessing = false; }, 400);
                 } else {
                     showStepFeedback("🎉 일차방정식 해결 완료! 전술 포탄을 선택하세요!", false);
                     openAmmoSelectModal();
@@ -1081,7 +1082,8 @@
             }
         }
 
-        function openAmmoSelectModal() {
+        window.openAmmoSelectModal = function() {
+            if (isActionProcessing) return;
             const modal = document.getElementById('ammo-select-modal');
             const bonusText = document.getElementById('synchro-bonus-text');
             if (isPerfectSynchroActive) {
@@ -1093,11 +1095,21 @@
                 bonusText.className = "text-xs text-slate-400";
             }
             modal.classList.remove('hidden');
-        }
+        };
 
         window.chooseSpecialAmmo = async function(ammoType) {
+            // ★ 강력한 단일 실행 락 (연타 완전 차단)
             if (isActionProcessing) return;
             isActionProcessing = true;
+
+            // 즉시 모든 모달 버튼 비활성화 (시각적 피드백)
+            ['fire', 'smoke', 'repair'].forEach(t => {
+                const btn = document.getElementById(`ammo-btn-${t}`);
+                if (btn) {
+                    btn.style.opacity = '0.5';
+                    btn.style.pointerEvents = 'none';
+                }
+            });
 
             document.getElementById('ammo-select-modal').classList.add('hidden');
             if (!lastKnownRoomData) {
@@ -1175,9 +1187,20 @@
 
             currentProblemStartTime = Date.now();
             mistakesOnCurrentProblem = 0;
-            isActionProcessing = false;
 
             await syncStateUpdate(nextData);
+
+            // 0.8초 뒤 모달 버튼 원복 및 연타 가드 해제
+            setTimeout(() => {
+                ['fire', 'smoke', 'repair'].forEach(t => {
+                    const btn = document.getElementById(`ammo-btn-${t}`);
+                    if (btn) {
+                        btn.style.opacity = '1';
+                        btn.style.pointerEvents = 'auto';
+                    }
+                });
+                isActionProcessing = false;
+            }, 800);
         };
 
         function triggerInterceptionAlert() {
