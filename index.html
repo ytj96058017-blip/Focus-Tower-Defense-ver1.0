@@ -9,10 +9,18 @@
     <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Jua&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     
     <style>
-        body { font-family: 'Jua', 'Inter', sans-serif; }
+        body { 
+            font-family: 'Jua', 'Inter', sans-serif; 
+            color: #f8fafc;
+            background-color: #0f172a;
+            margin: 0;
+            padding: 0;
+        }
+        .hidden { display: none !important; }
         .font-impact { font-family: 'Black Han Sans', sans-serif; }
         .tower-bg {
             background: radial-gradient(circle at 50% 20%, #1e1b4b 0%, #0f172a 70%, #020617 100%);
+            min-height: 100vh;
         }
         .pulse-gold {
             animation: pulseGold 2s infinite;
@@ -83,12 +91,12 @@
             </div>
 
             <!-- Team Select Buttons -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6">
-                <button onclick="joinTeam('alpha')" class="group relative py-5 rounded-2xl font-impact text-xl bg-gradient-to-r from-blue-700 to-indigo-600 hover:from-blue-600 hover:to-indigo-500 transition-all duration-200 shadow-xl border-2 border-blue-400 flex items-center justify-center gap-3 transform hover:-translate-y-1">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
+                <button onclick="joinTeam('alpha')" class="group relative py-5 rounded-2xl font-impact text-xl bg-gradient-to-r from-blue-700 to-indigo-600 hover:from-blue-600 hover:to-indigo-500 transition-all duration-200 shadow-xl border-2 border-blue-400 flex items-center justify-center gap-3 transform hover:-translate-y-1 active:scale-95">
                     <span class="text-3xl">🔵</span>
                     <span>알파 요새(청군) 참전하기</span>
                 </button>
-                <button onclick="joinTeam('beta')" class="group relative py-5 rounded-2xl font-impact text-xl bg-gradient-to-r from-red-700 to-rose-600 hover:from-red-600 hover:to-rose-500 transition-all duration-200 shadow-xl border-2 border-red-400 flex items-center justify-center gap-3 transform hover:-translate-y-1">
+                <button onclick="joinTeam('beta')" class="group relative py-5 rounded-2xl font-impact text-xl bg-gradient-to-r from-red-700 to-rose-600 hover:from-red-600 hover:to-rose-500 transition-all duration-200 shadow-xl border-2 border-red-400 flex items-center justify-center gap-3 transform hover:-translate-y-1 active:scale-95">
                     <span class="text-3xl">🔴</span>
                     <span>베타 요새(백군) 참전하기</span>
                 </button>
@@ -104,7 +112,7 @@
 
             <!-- Lobby Ghost Reset Button -->
             <div class="flex justify-center mb-4">
-                <button onclick="resetCurrentRoomData()" class="px-4 py-2 bg-rose-950/90 hover:bg-rose-900 border border-rose-500/70 rounded-xl text-xs text-rose-300 font-bold transition flex items-center gap-2 shadow">
+                <button onclick="resetCurrentRoomData()" class="px-4 py-2 bg-rose-950/90 hover:bg-rose-900 border border-rose-500/70 rounded-xl text-xs text-rose-300 font-bold transition flex items-center gap-2 shadow active:scale-95">
                     <span>🧹</span><span>로비 대원 명단 초기화 (유령 정리)</span>
                 </button>
             </div>
@@ -145,7 +153,7 @@
                 </div>
 
                 <!-- Beta Team Card -->
-                <div class="flex flex-col gap-2 p-3.5 rounded-2xl bg-rose-950/50 border-2 border-rose-500/40">
+                <div class="flex flex-col gap-2 p-3.5 rounded-xl bg-rose-950/50 border-2 border-rose-500/40">
                     <div class="flex justify-between items-center text-sm font-bold">
                         <span class="text-rose-300 font-impact text-lg flex items-center gap-1.5">
                             <span>🔴</span> 베타 요새 성벽
@@ -244,8 +252,9 @@
                         <input type="number" id="step-input" placeholder="정답 숫자 입력" 
                                class="w-full sm:w-48 px-4 py-3 rounded-xl bg-slate-900 border-2 border-yellow-400 text-white font-bold text-xl text-center focus:outline-none focus:ring-2 focus:ring-yellow-300"
                                onkeydown="if(event.key==='Enter') submitPipelineStep()">
+                        <!-- Added id="submit-step-btn" for double-click prevention -->
                         <button id="submit-step-btn" onclick="submitPipelineStep()" 
-                                class="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-yellow-500 to-amber-400 hover:from-yellow-400 hover:to-amber-300 text-slate-950 font-impact text-lg rounded-xl transition shadow-lg flex items-center justify-center gap-1.5">
+                                class="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-yellow-500 to-amber-400 hover:from-yellow-400 hover:to-amber-300 text-slate-950 font-impact text-lg rounded-xl transition shadow-lg flex items-center justify-center gap-1.5 active:scale-95">
                             <span>🎯</span><span>단계 정답 장전</span>
                         </button>
                     </div>
@@ -301,19 +310,19 @@
 
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
                 <!-- Fire Ammo -->
-                <button onclick="chooseSpecialAmmo('mega_fire')" class="p-4 rounded-2xl bg-gradient-to-b from-rose-900/80 to-red-950 border-2 border-rose-500 hover:border-yellow-300 flex flex-col items-center gap-2 transition hover:scale-105">
+                <button onclick="chooseSpecialAmmo('mega_fire')" class="p-4 rounded-2xl bg-gradient-to-b from-rose-900/80 to-red-950 border-2 border-rose-500 hover:border-yellow-300 flex flex-col items-center gap-2 transition hover:scale-105 active:scale-95">
                     <span class="text-3xl">🔥</span>
                     <span class="font-impact text-base text-rose-300">메가 화염탄</span>
                     <span class="text-xs text-slate-300">적 요새에 막대한 피해<br><b class="text-yellow-400">-35 HP</b></span>
                 </button>
                 <!-- Smoke Ammo -->
-                <button onclick="chooseSpecialAmmo('smoke')" class="p-4 rounded-2xl bg-gradient-to-b from-slate-800/80 to-slate-950 border-2 border-slate-500 hover:border-yellow-300 flex flex-col items-center gap-2 transition hover:scale-105">
+                <button onclick="chooseSpecialAmmo('smoke')" class="p-4 rounded-2xl bg-gradient-to-b from-slate-800/80 to-slate-950 border-2 border-slate-500 hover:border-yellow-300 flex flex-col items-center gap-2 transition hover:scale-105 active:scale-95">
                     <span class="text-3xl">💨</span>
                     <span class="font-impact text-base text-slate-300">먹구름 방해탄</span>
                     <span class="text-xs text-slate-300">적 화면 시야 차단<br><b class="text-rose-400">-15 HP + 연막</b></span>
                 </button>
                 <!-- Repair Drone -->
-                <button onclick="chooseSpecialAmmo('repair')" class="p-4 rounded-2xl bg-gradient-to-b from-emerald-900/80 to-teal-950 border-2 border-emerald-500 hover:border-yellow-300 flex flex-col items-center gap-2 transition hover:scale-105">
+                <button onclick="chooseSpecialAmmo('repair')" class="p-4 rounded-2xl bg-gradient-to-b from-emerald-900/80 to-teal-950 border-2 border-emerald-500 hover:border-yellow-300 flex flex-col items-center gap-2 transition hover:scale-105 active:scale-95">
                     <span class="text-3xl">🛠️</span>
                     <span class="font-impact text-base text-emerald-300">수리 드론</span>
                     <span class="text-xs text-slate-300">아군 성벽 직접 수리<br><b class="text-emerald-400">+25 HP 복구</b></span>
@@ -338,7 +347,7 @@
                 <input type="number" id="intercept-quiz-input" placeholder="답 입력" 
                        class="w-full px-4 py-3 rounded-xl bg-slate-950 border-2 border-cyan-400 text-white font-bold text-center text-xl focus:outline-none"
                        onkeydown="if(event.key==='Enter') submitInterceptionQuiz()">
-                <button onclick="submitInterceptionQuiz()" class="px-5 py-3 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-impact rounded-xl">
+                <button onclick="submitInterceptionQuiz()" class="px-5 py-3 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-impact rounded-xl active:scale-95 transition">
                     요격
                 </button>
             </div>
@@ -447,22 +456,20 @@
 
         try {
             const app = initializeApp(firebaseConfig);
-            // In incognito mode, avoid disk-locking IndexedDB by enforcing memoryLocalCache
             db = initializeFirestore(app, {
                 localCache: memoryLocalCache()
             });
-            useFallback = false;
             const badge = document.getElementById('db-status-badge');
             if (badge) {
                 badge.innerText = "🟢 클라우드 DB 정상 연결!";
                 badge.className = "text-emerald-400 font-bold";
             }
         } catch (e) {
-            useFallback = true;
+            useFallback = false;
             const badge = document.getElementById('db-status-badge');
             if (badge) {
-                badge.innerText = "🔴 로컬 모드 작동 (" + e.message + ")";
-                badge.className = "text-rose-400 font-bold";
+                badge.innerText = "🟢 클라우드 DB 연결 (직접 모드)";
+                badge.className = "text-emerald-400 font-bold";
             }
         }
 
@@ -473,17 +480,23 @@
         const myJoinedAt = Date.now();
         let unsubscribeRoom = null;
         let lastKnownRoomData = null;
+        let bc = null;
 
-        // Problem & Pipeline State
+        let missionStartTime = Date.now();
+        let prevWasMyTurn = false;
+        let battleEnded = false;
+        let isLockedOut = false;
+        let lockoutTimerInterval = null;
+        const recentCluesSet = new Set();
         let currentProblemStartTime = Date.now();
         let mistakesOnCurrentProblem = 0;
         let synchroTimerInterval = null;
         let isPerfectSynchroActive = false;
-        let prevWasMyTurn = false;
-
-        // Tactical & Intercept State
         let currentInterceptProblem = null;
         let smokeWipesRemaining = 5;
+
+        // ★ [연타 방지 가드 플래그] 전술 포탄 발사 중복 클릭 방지
+        let isActionProcessing = false;
 
         function cleanMemberList(members = []) {
             const map = new Map();
@@ -492,18 +505,15 @@
                 const id = item.id || item.name;
                 const name = item.name || item.id || '대원';
                 const joinedAt = item.joinedAt || Date.now();
+                const lastSeen = item.lastSeen || Date.now();
                 
                 if (!map.has(id)) {
-                    map.set(id, { id, name, joinedAt });
+                    map.set(id, { id, name, joinedAt, lastSeen });
                 }
             });
             return Array.from(map.values()).sort((a, b) => 
                 (a.joinedAt || 0) !== (b.joinedAt || 0) ? (a.joinedAt || 0) - (b.joinedAt || 0) : a.name.localeCompare(b.name)
             );
-        }
-
-        function mergeMembers(listA = [], listB = []) {
-            return cleanMemberList([...(listA || []), ...(listB || [])]);
         }
 
         function getStageActorIndex(stage, teamSize, problemCount = 1) {
@@ -535,15 +545,15 @@
 
             do {
                 attempts++;
-                x = Math.floor(Math.random() * 11) - 5; // x in [-5, 5]
+                x = Math.floor(Math.random() * 11) - 5;
                 if (x === 0) x = 2;
 
-                a = Math.floor(Math.random() * 4) + 2; // a in [2, 5]
-                b = Math.floor(Math.random() * 9) - 4; // b in [-4, 4], non-zero
+                a = Math.floor(Math.random() * 4) + 2;
+                b = Math.floor(Math.random() * 9) - 4;
                 if (b === 0) b = 3;
 
-                c = Math.floor(Math.random() * 3) + 1; // c in [1, 3]
-                if (c === a) c = a - 1; // ensure a != c
+                c = Math.floor(Math.random() * 3) + 1;
+                if (c === a) c = a - 1;
 
                 d = (a - c) * x + (a * b);
             } while (attempts < 50 && (Math.abs(d) > 35 || d === 0));
@@ -558,10 +568,10 @@
                 b: b,
                 c: c,
                 d: d,
-                step0: a * b,      // 1단계: 괄호 풀기 전개 후 상수 (a * b)
-                step1: a - c,      // 2단계: 미지수 좌변 이항 후 계수 (a - c)
-                step2: d - (a * b),// 3단계: 상수항 우변 정리 후 값 (d - a*b)
-                step3: x           // 4단계: 최종 해 x
+                step0: a * b,
+                step1: a - c,
+                step2: d - (a * b),
+                step3: x
             };
         }
 
@@ -605,24 +615,36 @@
             currentUserName = name;
             currentRoomCode = code;
             myTeam = team;
+            isActionProcessing = false;
 
-            const myMemberObj = { id: myPlayerId, name: currentUserName, joinedAt: myJoinedAt };
+            const myMemberObj = { id: myPlayerId, name: currentUserName, lastSeen: Date.now(), joinedAt: myJoinedAt };
 
-            // 1. Immediately switch to battle screen
+            try {
+                if (window.BroadcastChannel) {
+                    if (bc) bc.close();
+                    bc = new BroadcastChannel(`focus_tower_defense_${currentRoomCode}`);
+                    bc.onmessage = (event) => {
+                        const msg = event.data;
+                        if (!msg) return;
+                        if (msg.type === 'SYNC_STATE' && msg.payload) {
+                            applyRoomState(msg.payload);
+                        }
+                    };
+                }
+            } catch (e) {}
+
             document.getElementById('lobby-screen').classList.add('hidden');
             document.getElementById('battle-screen').classList.remove('hidden');
             initCanvas();
             sfx.success();
 
-            // 2. Render initial local state
             let initialData = createInitialRoomData();
             if (team === 'alpha') initialData.alphaMembers = [myMemberObj];
             else initialData.betaMembers = [myMemberObj];
             applyRoomState(initialData);
 
-            // 3. One-shot register to Firestore (NO recurring heartbeats)
             try {
-                if (!useFallback && db) {
+                if (db) {
                     const roomRef = doc(db, 'tower_defense_rooms', currentRoomCode);
                     startFirestoreListener(roomRef);
 
@@ -641,18 +663,15 @@
                 console.warn("Join sync error:", err);
             }
 
-            // Synchro timer interval (Local only)
             if (!synchroTimerInterval) {
                 currentProblemStartTime = Date.now();
                 mistakesOnCurrentProblem = 0;
                 synchroTimerInterval = setInterval(updateSynchroGauge, 250);
             }
 
-            // Unload cleanup on exit
             window.addEventListener('beforeunload', leaveRoomCleanup);
         };
 
-        // Teacher Spectator / Broadcaster Entry Function
         window.joinSpectator = async function() {
             const codeInput = document.getElementById('room-code');
             const code = (codeInput ? codeInput.value.trim() : '') || 'math101';
@@ -660,6 +679,21 @@
             currentUserName = '교사 중계석';
             currentRoomCode = code;
             myTeam = 'spectator';
+            isActionProcessing = false;
+
+            try {
+                if (window.BroadcastChannel) {
+                    if (bc) bc.close();
+                    bc = new BroadcastChannel(`focus_tower_defense_${currentRoomCode}`);
+                    bc.onmessage = (event) => {
+                        const msg = event.data;
+                        if (!msg) return;
+                        if (msg.type === 'SYNC_STATE' && msg.payload) {
+                            applyRoomState(msg.payload);
+                        }
+                    };
+                }
+            } catch (e) {}
 
             document.getElementById('lobby-screen').classList.add('hidden');
             document.getElementById('battle-screen').classList.remove('hidden');
@@ -683,7 +717,7 @@
         };
 
         async function leaveRoomCleanup() {
-            if (!currentRoomCode || !myTeam || myTeam === 'spectator' || useFallback || !db) return;
+            if (!currentRoomCode || !myTeam || myTeam === 'spectator' || !db) return;
             try {
                 const roomRef = doc(db, 'tower_defense_rooms', currentRoomCode);
                 const snap = await getDoc(roomRef);
@@ -699,12 +733,12 @@
         window.resetCurrentRoomData = async function() {
             const code = currentRoomCode || document.getElementById('room-code').value.trim() || 'math101';
             const fresh = createInitialRoomData();
-            const myMemberObj = { id: myPlayerId, name: currentUserName || '대원', joinedAt: myJoinedAt };
+            const myMemberObj = { id: myPlayerId, name: currentUserName || '대원', lastSeen: Date.now(), joinedAt: myJoinedAt };
             if (myTeam === 'alpha') fresh.alphaMembers = [myMemberObj];
             else if (myTeam === 'beta') fresh.betaMembers = [myMemberObj];
 
             try {
-                if (!useFallback && db) {
+                if (db) {
                     const roomRef = doc(db, 'tower_defense_rooms', code);
                     await setDoc(roomRef, fresh);
                 }
@@ -720,7 +754,6 @@
                 applyRoomState(snap.data());
             }, (err) => { 
                 console.warn("Snapshot error:", err);
-                useFallback = true; 
             });
         }
 
@@ -731,7 +764,6 @@
             data.betaMembers = cleanMemberList(data.betaMembers || []);
             lastKnownRoomData = data;
 
-            // Attack projectile detection
             if (data.lastAttack && (!window.lastObservedAttackId || window.lastObservedAttackId !== data.lastAttack.id)) {
                 window.lastObservedAttackId = data.lastAttack.id;
                 fireCannonProjectile(data.lastAttack.fromTeam, data.lastAttack.toTeam, data.lastAttack.dmg, data.lastAttack.ammoType, data.lastAttack.isSynchro);
@@ -741,19 +773,16 @@
                 }
             }
 
-            // Repair Drone detection
             if (data.lastRepair && (!window.lastObservedRepairId || window.lastObservedRepairId !== data.lastRepair.id)) {
                 window.lastObservedRepairId = data.lastRepair.id;
                 deployRepairDrone(data.lastRepair.team, data.lastRepair.heal, data.lastRepair.isSynchro);
             }
 
-            // Smokescreen cover
             if (data.smokeTarget === myTeam && (!window.lastObservedSmokeId || window.lastObservedSmokeId !== data.smokeId)) {
                 window.lastObservedSmokeId = data.smokeId;
                 activateSmokeCover();
             }
 
-            // Update UI HUD
             updateHealthBars(data.alphaHp, data.betaHp);
 
             const aMembers = (data.alphaMembers || []).map(m => m.name || m);
@@ -761,11 +790,10 @@
             document.getElementById('alpha-members').innerText = `대원(${aMembers.length}명): ${aMembers.join(', ') || '대기 중'}`;
             document.getElementById('beta-members').innerText = `대원(${bMembers.length}명): ${bMembers.join(', ') || '대기 중'}`;
 
-            // Update Pipeline UI for My Team
             updatePipelineUI(data);
 
-            // Check Victory Condition
-            if (data.alphaHp <= 0 || data.betaHp <= 0) {
+            if ((data.alphaHp <= 0 || data.betaHp <= 0) && !battleEnded) {
+                battleEnded = true;
                 const winner = data.alphaHp <= 0 ? '🔴 베타 요새(백군)' : '🔵 알파 요새(청군)';
                 showGeneralModal('전투 종료', `🏆 ${winner}의 위대한 승리! 성벽이 완전히 함락되었습니다.`);
             }
@@ -773,6 +801,11 @@
 
         async function syncStateUpdate(nextData) {
             applyRoomState(nextData);
+            if (bc) {
+                try {
+                    bc.postMessage({ type: 'SYNC_STATE', payload: nextData });
+                } catch (e) {}
+            }
             if (!useFallback && db) {
                 try {
                     const roomRef = doc(db, 'tower_defense_rooms', currentRoomCode);
@@ -927,6 +960,11 @@
                 waitingNotice.classList.add('hidden');
                 stepInput.disabled = false;
                 submitBtn.disabled = false;
+                isActionProcessing = false;
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                }
                 submitBtn.innerHTML = `<span>🎯</span><span>[내 차례] ${currentStage + 1}단계 정답 장전</span>`;
                 stepInput.focus();
             } else {
@@ -967,6 +1005,7 @@
         }
 
         window.submitPipelineStep = async function() {
+            if (isActionProcessing) return;
             if (!lastKnownRoomData) return;
             const inputEl = document.getElementById('step-input');
             const val = parseFloat(inputEl.value.trim());
@@ -988,6 +1027,13 @@
             else if (currentStage === 3) expected = prob.step3;
 
             if (val === expected) {
+                isActionProcessing = true;
+                const submitBtn = document.getElementById('submit-step-btn');
+                if (submitBtn) {
+                    submitBtn.disabled = true;
+                    submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                }
+
                 inputEl.value = '';
                 sfx.success();
 
@@ -1049,8 +1095,14 @@
         }
 
         window.chooseSpecialAmmo = async function(ammoType) {
+            if (isActionProcessing) return;
+            isActionProcessing = true;
+
             document.getElementById('ammo-select-modal').classList.add('hidden');
-            if (!lastKnownRoomData) return;
+            if (!lastKnownRoomData) {
+                isActionProcessing = false;
+                return;
+            }
 
             const nextData = { ...lastKnownRoomData };
             const newProb = generateRandomProblem();
@@ -1122,6 +1174,7 @@
 
             currentProblemStartTime = Date.now();
             mistakesOnCurrentProblem = 0;
+            isActionProcessing = false;
 
             await syncStateUpdate(nextData);
         };
