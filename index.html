@@ -310,19 +310,19 @@
 
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
                 <!-- Fire Ammo -->
-                <button id="ammo-btn-fire" onclick="chooseSpecialAmmo('mega_fire')" class="p-4 rounded-2xl bg-gradient-to-b from-rose-900/80 to-red-950 border-2 border-rose-500 hover:border-yellow-300 flex flex-col items-center gap-2 transition hover:scale-105 active:scale-95 shadow-xl">
+                <button onclick="chooseSpecialAmmo('mega_fire')" class="p-4 rounded-2xl bg-gradient-to-b from-rose-900/80 to-red-950 border-2 border-rose-500 hover:border-yellow-300 flex flex-col items-center gap-2 transition hover:scale-105 active:scale-95 shadow-xl">
                     <span class="text-3xl">🔥</span>
                     <span class="font-impact text-base text-rose-300">메가 화염탄</span>
                     <span class="text-xs text-slate-300">적 요새에 막대한 피해<br><b class="text-yellow-400">-35 HP</b></span>
                 </button>
                 <!-- Smoke Ammo -->
-                <button id="ammo-btn-smoke" onclick="chooseSpecialAmmo('smoke')" class="p-4 rounded-2xl bg-gradient-to-b from-slate-800/80 to-slate-950 border-2 border-slate-500 hover:border-yellow-300 flex flex-col items-center gap-2 transition hover:scale-105 active:scale-95 shadow-xl">
+                <button onclick="chooseSpecialAmmo('smoke')" class="p-4 rounded-2xl bg-gradient-to-b from-slate-800/80 to-slate-950 border-2 border-slate-500 hover:border-yellow-300 flex flex-col items-center gap-2 transition hover:scale-105 active:scale-95 shadow-xl">
                     <span class="text-3xl">💨</span>
                     <span class="font-impact text-base text-slate-300">먹구름 방해탄</span>
                     <span class="text-xs text-slate-300">적 화면 시야 차단<br><b class="text-rose-400">-15 HP + 연막</b></span>
                 </button>
                 <!-- Repair Drone -->
-                <button id="ammo-btn-repair" onclick="chooseSpecialAmmo('repair')" class="p-4 rounded-2xl bg-gradient-to-b from-emerald-900/80 to-teal-950 border-2 border-emerald-500 hover:border-yellow-300 flex flex-col items-center gap-2 transition hover:scale-105 active:scale-95 shadow-xl">
+                <button onclick="chooseSpecialAmmo('repair')" class="p-4 rounded-2xl bg-gradient-to-b from-emerald-900/80 to-teal-950 border-2 border-emerald-500 hover:border-yellow-300 flex flex-col items-center gap-2 transition hover:scale-105 active:scale-95 shadow-xl">
                     <span class="text-3xl">🛠️</span>
                     <span class="font-impact text-base text-emerald-300">수리 드론</span>
                     <span class="text-xs text-slate-300">아군 성벽 직접 수리<br><b class="text-emerald-400">+25 HP 복구</b></span>
@@ -495,7 +495,7 @@
         let currentInterceptProblem = null;
         let smokeWipesRemaining = 5;
 
-        // ★ [강력한 연타 방지 가드 시스템 - try ~ finally로 절대 먹통 방지 보장]
+        // ★ [안전한 연타 방지 가드 시스템] try ~ finally로 락 해제 보장
         let isActionProcessing = false;
 
         function cleanMemberList(members = []) {
@@ -1056,7 +1056,7 @@
                     showStepFeedback("❌ 계산이 맞지 않습니다! 부호와 사칙연산을 다시 확인해 보세요.", true);
                 }
             } finally {
-                // 어떤 예외나 상황에서도 0.4초 뒤에 반드시 연타 락을 해제하여 절대 화면이 먹통이 되지 않게 보장
+                // 어떤 상황에서도 연타 락을 반드시 해제하되, 4단계 완료 시에는 모달이 안정적으로 열리도록 약간의 지연 후 락 해제
                 setTimeout(() => {
                     isActionProcessing = false;
                     const submitBtn = document.getElementById('submit-step-btn');
@@ -1064,7 +1064,7 @@
                         submitBtn.disabled = false;
                         submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
                     }
-                }, 400);
+                }, 300);
             }
         };
 
@@ -1188,10 +1188,9 @@
 
                 await syncStateUpdate(nextData);
             } finally {
-                // 0.8초 후 연타 방지 가드 자동 해제 (다음 포탄 선택 재사용 가능)
                 setTimeout(() => {
                     isActionProcessing = false;
-                }, 800);
+                }, 500);
             }
         };
 
