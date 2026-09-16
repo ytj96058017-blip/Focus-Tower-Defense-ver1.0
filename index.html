@@ -94,6 +94,14 @@
                 </button>
             </div>
 
+            <!-- Teacher Spectator Mode Button -->
+            <div class="mb-5">
+                <button onclick="joinSpectator()" class="w-full py-4 rounded-2xl font-impact text-lg md:text-xl bg-gradient-to-r from-purple-950 via-slate-900 to-indigo-950 hover:from-purple-900 hover:to-indigo-900 transition-all duration-200 shadow-2xl border-2 border-purple-400 text-purple-200 flex items-center justify-center gap-3 transform hover:-translate-y-0.5 active:scale-95">
+                    <span class="text-2xl animate-pulse">📺</span>
+                    <span class="tracking-wide font-bold">교사 전용 / 대형 스크린 중계석 입장 (학생 명단 미포함 관전)</span>
+                </button>
+            </div>
+
             <!-- Lobby Ghost Reset Button -->
             <div class="flex justify-center mb-4">
                 <button onclick="resetCurrentRoomData()" class="px-4 py-2 bg-rose-950/90 hover:bg-rose-900 border border-rose-500/70 rounded-xl text-xs text-rose-300 font-bold transition flex items-center gap-2 shadow">
@@ -201,6 +209,35 @@
                 <div class="w-full max-w-xl flex flex-col items-center gap-3">
                     <div id="step-instruction" class="text-sm md:text-base font-bold text-yellow-200 min-h-[44px] flex items-center justify-center px-2">
                         단계 안내 로딩 중...
+                    </div>
+
+                    <!-- Spectator Dual-Team Live Broadcast Panel -->
+                    <div id="spectator-broadcast-panel" class="hidden w-full max-w-2xl bg-gradient-to-r from-slate-900/90 via-purple-950/80 to-slate-900/90 border-2 border-purple-400/80 rounded-2xl p-4 shadow-2xl">
+                        <div class="flex items-center justify-between border-b border-purple-500/40 pb-2 mb-3">
+                            <span class="text-xs font-mono text-purple-300 font-bold flex items-center gap-2">
+                                <span class="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping"></span>
+                                <span>ON-AIR // 대형 스크린 실시간 공식 중계석</span>
+                            </span>
+                            <span class="text-[11px] font-impact text-yellow-300">교사 화면: 학생 턴 미개입</span>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-left">
+                            <div class="p-2.5 rounded-xl bg-blue-950/60 border border-blue-500/50">
+                                <div class="text-xs text-blue-300 font-bold font-impact mb-1 flex items-center justify-between">
+                                    <span>🔵 알파 요새 (청군)</span>
+                                    <span id="spec-alpha-op" class="text-[10px] text-yellow-300 font-mono">작전 #1</span>
+                                </div>
+                                <div id="spec-alpha-stage" class="text-xs font-bold text-white mb-1">1단계: 괄호 풀기</div>
+                                <div id="spec-alpha-actor" class="text-[11px] text-blue-200 font-mono truncate">주자: 대기 중</div>
+                            </div>
+                            <div class="p-2.5 rounded-xl bg-rose-950/60 border border-rose-500/50">
+                                <div class="text-xs text-rose-300 font-bold font-impact mb-1 flex items-center justify-between">
+                                    <span>🔴 베타 요새 (백군)</span>
+                                    <span id="spec-beta-op" class="text-[10px] text-yellow-300 font-mono">작전 #1</span>
+                                </div>
+                                <div id="spec-beta-stage" class="text-xs font-bold text-white mb-1">1단계: 괄호 풀기</div>
+                                <div id="spec-beta-actor" class="text-[11px] text-rose-200 font-mono truncate">주자: 대기 중</div>
+                            </div>
+                        </div>
                     </div>
 
                     <div id="input-controls" class="flex flex-col sm:flex-row items-center justify-center gap-2 w-full max-w-md">
@@ -615,8 +652,38 @@
             window.addEventListener('beforeunload', leaveRoomCleanup);
         };
 
+        // Teacher Spectator / Broadcaster Entry Function
+        window.joinSpectator = async function() {
+            const codeInput = document.getElementById('room-code');
+            const code = (codeInput ? codeInput.value.trim() : '') || 'math101';
+
+            currentUserName = '교사 중계석';
+            currentRoomCode = code;
+            myTeam = 'spectator';
+
+            document.getElementById('lobby-screen').classList.add('hidden');
+            document.getElementById('battle-screen').classList.remove('hidden');
+            initCanvas();
+            sfx.synchro();
+
+            try {
+                if (db) {
+                    const roomRef = doc(db, 'tower_defense_rooms', currentRoomCode);
+                    startFirestoreListener(roomRef);
+                    const snap = await getDoc(roomRef);
+                    if (snap.exists()) {
+                        applyRoomState(snap.data());
+                    } else {
+                        applyRoomState(createInitialRoomData());
+                    }
+                }
+            } catch (err) {
+                applyRoomState(createInitialRoomData());
+            }
+        };
+
         async function leaveRoomCleanup() {
-            if (!currentRoomCode || !myTeam || useFallback || !db) return;
+            if (!currentRoomCode || !myTeam || myTeam === 'spectator' || useFallback || !db) return;
             try {
                 const roomRef = doc(db, 'tower_defense_rooms', currentRoomCode);
                 const snap = await getDoc(roomRef);
@@ -729,6 +796,71 @@
 
         function updatePipelineUI(data) {
             const team = myTeam;
+
+            // Handle Spectator / Broadcaster View
+            if (team === 'spectator') {
+                const specPanel = document.getElementById('spectator-broadcast-panel');
+                const inputControls = document.getElementById('input-controls');
+                const waitingNotice = document.getElementById('waiting-notice');
+
+                if (specPanel) specPanel.classList.remove('hidden');
+                if (inputControls) inputControls.classList.add('hidden');
+                if (waitingNotice) waitingNotice.classList.add('hidden');
+
+                const teamBadge = document.getElementById('my-team-badge');
+                if (teamBadge) {
+                    teamBadge.innerText = `📺 ON-AIR // 교사 공식 중계석`;
+                    teamBadge.className = 'text-xs px-3.5 py-1.5 bg-purple-500/30 text-purple-300 border border-purple-400 rounded-full font-bold font-impact animate-pulse';
+                }
+                const roleBadge = document.getElementById('my-role-badge');
+                if (roleBadge) {
+                    roleBadge.innerText = `관전 모드 (학생 턴 100% 자율 진행)`;
+                    roleBadge.className = 'text-xs px-3.5 py-1.5 bg-slate-800 text-slate-300 border border-slate-600 rounded-full font-bold';
+                }
+
+                const stageNames = [
+                    "① 괄호 풀기 (전개)",
+                    "② 미지수 좌변 이항",
+                    "③ 상수항 우변 정리",
+                    "④ 최종 해 도출 & 발사 🚀"
+                ];
+
+                const aMembers = cleanMemberList(data.alphaMembers || []);
+                const bMembers = cleanMemberList(data.betaMembers || []);
+                const aStage = data.alphaStage || 0;
+                const bStage = data.betaStage || 0;
+                const aOp = data.alphaProblemCount || 1;
+                const bOp = data.betaProblemCount || 1;
+
+                const aActorIdx = getStageActorIndex(aStage, Math.max(1, aMembers.length), aOp);
+                const bActorIdx = getStageActorIndex(bStage, Math.max(1, bMembers.length), bOp);
+
+                const specAOp = document.getElementById('spec-alpha-op');
+                const specAStage = document.getElementById('spec-alpha-stage');
+                const specAActor = document.getElementById('spec-alpha-actor');
+                if (specAOp) specAOp.innerText = `작전 #${aOp} (${data.alphaHp || 0} HP)`;
+                if (specAStage) specAStage.innerText = stageNames[aStage] || '대기 중';
+                if (specAActor) specAActor.innerText = `현재 주자: ${aMembers[aActorIdx] ? aMembers[aActorIdx].name : '대기 중'}`;
+
+                const specBOp = document.getElementById('spec-beta-op');
+                const specBStage = document.getElementById('spec-beta-stage');
+                const specBActor = document.getElementById('spec-beta-actor');
+                if (specBOp) specBOp.innerText = `작전 #${bOp} (${data.betaHp || 0} HP)`;
+                if (specBStage) specBStage.innerText = stageNames[bStage] || '대기 중';
+                if (specBActor) specBActor.innerText = `현재 주자: ${bMembers[bActorIdx] ? bMembers[bActorIdx].name : '대기 중'}`;
+
+                const instEl = document.getElementById('step-instruction');
+                if (instEl) {
+                    instEl.innerHTML = `<span class="text-yellow-300">📡 [실시간 공식 중계 중] 양 요새의 협동 파이프라인 배틀을 관전하고 있습니다.</span>`;
+                }
+
+                const activeProb = (data.alphaHp || 100) >= (data.betaHp || 100) ? data.alphaProblem : data.betaProblem;
+                if (activeProb && document.getElementById('equation-display')) {
+                    document.getElementById('equation-display').innerText = activeProb.expr;
+                }
+                return;
+            }
+
             const myRawMembers = team === 'alpha' ? (data.alphaMembers || []) : (data.betaMembers || []);
             const myMembers = cleanMemberList(myRawMembers);
             const currentStage = team === 'alpha' ? (data.alphaStage || 0) : (data.betaStage || 0);
