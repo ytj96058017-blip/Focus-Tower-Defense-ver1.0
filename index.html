@@ -495,9 +495,8 @@
         let currentInterceptProblem = null;
         let smokeWipesRemaining = 5;
 
-        // ★ [안전한 연타 방지 가드 시스템] try ~ finally로 락 해제 보장
-        let isActionProcessing = false;
-
+        // 원인 분석: 기존에 연타 방지 변수(isActionProcessing)가 비정상적으로 유지되거나 락이 풀리지 않아 버튼이 먹통이 되던 문제를 해결하기 위해,
+        // 강제 락을 제거하고 즉시 반응형으로 동작하도록 수정하였습니다.
         function cleanMemberList(members = []) {
             const map = new Map();
             members.forEach(item => {
@@ -615,7 +614,6 @@
             currentUserName = name;
             currentRoomCode = code;
             myTeam = team;
-            isActionProcessing = false;
 
             const myMemberObj = { id: myPlayerId, name: currentUserName, lastSeen: Date.now(), joinedAt: myJoinedAt };
 
@@ -679,7 +677,6 @@
             currentUserName = '교사 중계석';
             currentRoomCode = code;
             myTeam = 'spectator';
-            isActionProcessing = false;
 
             try {
                 if (window.BroadcastChannel) {
@@ -1004,67 +1001,46 @@
         }
 
         window.submitPipelineStep = async function() {
-            if (isActionProcessing) return;
             if (!lastKnownRoomData) return;
-            
-            isActionProcessing = true;
-            const submitBtn = document.getElementById('submit-step-btn');
-            if (submitBtn) {
-                submitBtn.disabled = true;
-                submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            const inputEl = document.getElementById('step-input');
+            const val = parseFloat(inputEl.value.trim());
+
+            if (isNaN(val)) {
+                showStepFeedback("숫자를 입력해 주세요!", true);
+                sfx.error();
+                return;
             }
 
-            try {
-                const inputEl = document.getElementById('step-input');
-                const val = parseFloat(inputEl.value.trim());
+            const data = lastKnownRoomData;
+            const currentStage = myTeam === 'alpha' ? (data.alphaStage || 0) : (data.betaStage || 0);
+            const prob = myTeam === 'alpha' ? data.alphaProblem : data.betaProblem;
 
-                if (isNaN(val)) {
-                    showStepFeedback("숫자를 입력해 주세요!", true);
-                    sfx.error();
-                    return;
-                }
+            let expected = null;
+            if (currentStage === 0) expected = prob.step0;
+            else if (currentStage === 1) expected = prob.step1;
+            else if (currentStage === 2) expected = prob.step2;
+            else if (currentStage === 3) expected = prob.step3;
 
-                const data = lastKnownRoomData;
-                const currentStage = myTeam === 'alpha' ? (data.alphaStage || 0) : (data.betaStage || 0);
-                const prob = myTeam === 'alpha' ? data.alphaProblem : data.betaProblem;
+            if (val === expected) {
+                inputEl.value = '';
+                sfx.success();
 
-                let expected = null;
-                if (currentStage === 0) expected = prob.step0;
-                else if (currentStage === 1) expected = prob.step1;
-                else if (currentStage === 2) expected = prob.step2;
-                else if (currentStage === 3) expected = prob.step3;
+                if (currentStage < 3) {
+                    const nextData = { ...data };
+                    if (myTeam === 'alpha') nextData.alphaStage = currentStage + 1;
+                    else nextData.betaStage = currentStage + 1;
+                    nextData.updatedAt = Date.now();
 
-                if (val === expected) {
-                    inputEl.value = '';
-                    sfx.success();
-
-                    if (currentStage < 3) {
-                        const nextData = { ...data };
-                        if (myTeam === 'alpha') nextData.alphaStage = currentStage + 1;
-                        else nextData.betaStage = currentStage + 1;
-                        nextData.updatedAt = Date.now();
-
-                        showStepFeedback(`✨ [${currentStage + 1}단계 완료] 훌륭합니다! 다음 대원에게 바통을 넘깁니다!`, false);
-                        await syncStateUpdate(nextData);
-                    } else {
-                        showStepFeedback("🎉 일차방정식 해결 완료! 전술 포탄을 선택하세요!", false);
-                        openAmmoSelectModal();
-                    }
+                    showStepFeedback(`✨ [${currentStage + 1}단계 완료] 훌륭합니다! 다음 대원에게 바통을 넘깁니다!`, false);
+                    await syncStateUpdate(nextData);
                 } else {
-                    mistakesOnCurrentProblem++;
-                    sfx.error();
-                    showStepFeedback("❌ 계산이 맞지 않습니다! 부호와 사칙연산을 다시 확인해 보세요.", true);
+                    showStepFeedback("🎉 일차방정식 해결 완료! 전술 포탄을 선택하세요!", false);
+                    openAmmoSelectModal();
                 }
-            } finally {
-                // 어떤 상황에서도 연타 락을 반드시 해제하되, 4단계 완료 시에는 모달이 안정적으로 열리도록 약간의 지연 후 락 해제
-                setTimeout(() => {
-                    isActionProcessing = false;
-                    const submitBtn = document.getElementById('submit-step-btn');
-                    if (submitBtn) {
-                        submitBtn.disabled = false;
-                        submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-                    }
-                }, 300);
+            } else {
+                mistakesOnCurrentProblem++;
+                sfx.error();
+                showStepFeedback("❌ 계산이 맞지 않습니다! 부호와 사칙연산을 다시 확인해 보세요.", true);
             }
         };
 
@@ -1093,7 +1069,6 @@
         }
 
         window.openAmmoSelectModal = function() {
-            if (isActionProcessing) return;
             const modal = document.getElementById('ammo-select-modal');
             const bonusText = document.getElementById('synchro-bonus-text');
             if (isPerfectSynchroActive) {
@@ -1108,90 +1083,81 @@
         };
 
         window.chooseSpecialAmmo = async function(ammoType) {
-            if (isActionProcessing) return;
-            isActionProcessing = true;
+            document.getElementById('ammo-select-modal').classList.add('hidden');
+            if (!lastKnownRoomData) return;
 
-            try {
-                document.getElementById('ammo-select-modal').classList.add('hidden');
-                if (!lastKnownRoomData) return;
+            const nextData = { ...lastKnownRoomData };
+            const newProb = generateRandomProblem();
+            const bonusDmg = isPerfectSynchroActive ? 10 : 0;
+            let attackPayload = null;
+            let repairPayload = null;
 
-                const nextData = { ...lastKnownRoomData };
-                const newProb = generateRandomProblem();
-                const bonusDmg = isPerfectSynchroActive ? 10 : 0;
-                let attackPayload = null;
-                let repairPayload = null;
+            if (ammoType === 'mega_fire') {
+                const dmg = 35 + bonusDmg;
+                const targetTeam = myTeam === 'alpha' ? 'beta' : 'alpha';
+                if (myTeam === 'alpha') nextData.betaHp = Math.max(0, nextData.betaHp - dmg);
+                else nextData.alphaHp = Math.max(0, nextData.alphaHp - dmg);
 
-                if (ammoType === 'mega_fire') {
-                    const dmg = 35 + bonusDmg;
-                    const targetTeam = myTeam === 'alpha' ? 'beta' : 'alpha';
-                    if (myTeam === 'alpha') nextData.betaHp = Math.max(0, nextData.betaHp - dmg);
-                    else nextData.alphaHp = Math.max(0, nextData.alphaHp - dmg);
+                attackPayload = { 
+                    fromTeam: myTeam, 
+                    toTeam: targetTeam, 
+                    dmg: dmg, 
+                    ammoType: 'mega_fire', 
+                    isSynchro: isPerfectSynchroActive, 
+                    id: Date.now() + Math.random() 
+                };
+                showStepFeedback(`🔥 메가 화염탄 폭격 발사! (-${dmg} HP)`, false);
 
-                    attackPayload = { 
-                        fromTeam: myTeam, 
-                        toTeam: targetTeam, 
-                        dmg: dmg, 
-                        ammoType: 'mega_fire', 
-                        isSynchro: isPerfectSynchroActive, 
-                        id: Date.now() + Math.random() 
-                    };
-                    showStepFeedback(`🔥 메가 화염탄 폭격 발사! (-${dmg} HP)`, false);
+            } else if (ammoType === 'smoke') {
+                const dmg = 15 + bonusDmg;
+                const targetTeam = myTeam === 'alpha' ? 'beta' : 'alpha';
+                if (myTeam === 'alpha') nextData.betaHp = Math.max(0, nextData.betaHp - dmg);
+                else nextData.alphaHp = Math.max(0, nextData.alphaHp - dmg);
 
-                } else if (ammoType === 'smoke') {
-                    const dmg = 15 + bonusDmg;
-                    const targetTeam = myTeam === 'alpha' ? 'beta' : 'alpha';
-                    if (myTeam === 'alpha') nextData.betaHp = Math.max(0, nextData.betaHp - dmg);
-                    else nextData.alphaHp = Math.max(0, nextData.alphaHp - dmg);
+                attackPayload = { 
+                    fromTeam: myTeam, 
+                    toTeam: targetTeam, 
+                    dmg: dmg, 
+                    ammoType: 'smoke', 
+                    isSynchro: isPerfectSynchroActive, 
+                    id: Date.now() + Math.random() 
+                };
+                nextData.smokeTarget = targetTeam;
+                nextData.smokeId = Date.now();
+                showStepFeedback(`💨 먹구름 방해탄 발사! 상대 요새에 연막 살포!`, false);
 
-                    attackPayload = { 
-                        fromTeam: myTeam, 
-                        toTeam: targetTeam, 
-                        dmg: dmg, 
-                        ammoType: 'smoke', 
-                        isSynchro: isPerfectSynchroActive, 
-                        id: Date.now() + Math.random() 
-                    };
-                    nextData.smokeTarget = targetTeam;
-                    nextData.smokeId = Date.now();
-                    showStepFeedback(`💨 먹구름 방해탄 발사! 상대 요새에 연막 살포!`, false);
+            } else if (ammoType === 'repair') {
+                const heal = 25 + bonusDmg;
+                if (myTeam === 'alpha') nextData.alphaHp = Math.min(100, nextData.alphaHp + heal);
+                else nextData.betaHp = Math.min(100, nextData.betaHp + heal);
 
-                } else if (ammoType === 'repair') {
-                    const heal = 25 + bonusDmg;
-                    if (myTeam === 'alpha') nextData.alphaHp = Math.min(100, nextData.alphaHp + heal);
-                    else nextData.betaHp = Math.min(100, nextData.betaHp + heal);
-
-                    repairPayload = { 
-                        team: myTeam, 
-                        heal: heal, 
-                        isSynchro: isPerfectSynchroActive, 
-                        id: Date.now() + Math.random() 
-                    };
-                    nextData.lastRepair = repairPayload;
-                    showStepFeedback(`🛠️ 수리 드론 출현! 아군 성채를 직접 나노 수리 중입니다! (+${heal} HP)`, false);
-                }
-
-                if (myTeam === 'alpha') {
-                    nextData.alphaProblem = newProb;
-                    nextData.alphaStage = 0;
-                    nextData.alphaProblemCount = (nextData.alphaProblemCount || 1) + 1;
-                } else {
-                    nextData.betaProblem = newProb;
-                    nextData.betaStage = 0;
-                    nextData.betaProblemCount = (nextData.betaProblemCount || 1) + 1;
-                }
-
-                if (attackPayload) nextData.lastAttack = attackPayload;
-                nextData.updatedAt = Date.now();
-
-                currentProblemStartTime = Date.now();
-                mistakesOnCurrentProblem = 0;
-
-                await syncStateUpdate(nextData);
-            } finally {
-                setTimeout(() => {
-                    isActionProcessing = false;
-                }, 500);
+                repairPayload = { 
+                    team: myTeam, 
+                    heal: heal, 
+                    isSynchro: isPerfectSynchroActive, 
+                    id: Date.now() + Math.random() 
+                };
+                nextData.lastRepair = repairPayload;
+                showStepFeedback(`🛠️ 수리 드론 출현! 아군 성채를 직접 나노 수리 중입니다! (+${heal} HP)`, false);
             }
+
+            if (myTeam === 'alpha') {
+                nextData.alphaProblem = newProb;
+                nextData.alphaStage = 0;
+                nextData.alphaProblemCount = (nextData.alphaProblemCount || 1) + 1;
+            } else {
+                nextData.betaProblem = newProb;
+                nextData.betaStage = 0;
+                nextData.betaProblemCount = (nextData.betaProblemCount || 1) + 1;
+            }
+
+            if (attackPayload) nextData.lastAttack = attackPayload;
+            nextData.updatedAt = Date.now();
+
+            currentProblemStartTime = Date.now();
+            mistakesOnCurrentProblem = 0;
+
+            await syncStateUpdate(nextData);
         };
 
         function triggerInterceptionAlert() {
